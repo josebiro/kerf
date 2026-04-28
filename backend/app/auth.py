@@ -2,19 +2,8 @@
 
 from typing import Optional
 from fastapi import Header, HTTPException, Depends
-from supabase import create_client, Client
 
-from app.config import SUPABASE_URL, SUPABASE_SERVICE_KEY
-
-_supabase_client: Client | None = None
-
-
-def _get_supabase_client() -> Client:
-    """Lazy-initialize the Supabase admin client."""
-    global _supabase_client
-    if _supabase_client is None:
-        _supabase_client = create_client(SUPABASE_URL, SUPABASE_SERVICE_KEY)
-    return _supabase_client
+from app.supabase_client import get_supabase_client as _get_supabase_client
 
 
 async def get_optional_user(

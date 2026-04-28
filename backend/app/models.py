@@ -98,3 +98,44 @@ class ReportRequest(BaseModel):
     all_solid: bool = False
     display_units: str = "in"
     thumbnail: str | None = None  # base64 data URL from canvas
+
+
+class ProjectCreate(BaseModel):
+    name: str
+    filename: str
+    session_id: str
+    solid_species: str
+    sheet_type: str
+    all_solid: bool = False
+    display_units: str = "in"
+    analysis_result: AnalyzeResponse
+    thumbnail: str | None = None
+
+
+class ProjectSummary(BaseModel):
+    id: str
+    name: str
+    filename: str
+    solid_species: str
+    sheet_type: str
+    part_count: int
+    unique_parts: int
+    estimated_cost: float | None
+    thumbnail_url: str | None
+    created_at: str
+    updated_at: str
+
+
+class ProjectDetail(BaseModel):
+    id: str
+    name: str
+    filename: str
+    solid_species: str
+    sheet_type: str
+    all_solid: bool
+    display_units: str
+    analysis_result: AnalyzeResponse
+    file_url: str
+    thumbnail_url: str | None
+    created_at: str
+    updated_at: str
