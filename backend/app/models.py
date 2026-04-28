@@ -139,3 +139,65 @@ class ProjectDetail(BaseModel):
     thumbnail_url: str | None
     created_at: str
     updated_at: str
+
+
+class BufferConfig(BaseModel):
+    sheet_mode: str = "percentage"    # "percentage" or "extra_parts"
+    sheet_value: float = 15.0         # 15% or N extra parts
+    lumber_mode: str = "extra_parts"  # "percentage" or "extra_parts"
+    lumber_value: float = 1.0         # N extra per unique part or %
+
+
+class BoardSizeConfig(BaseModel):
+    width: float = 6.0    # inches
+    length: float = 96.0  # inches
+
+
+class Placement(BaseModel):
+    part_name: str
+    x: float
+    y: float
+    width: float
+    height: float
+    rotated: bool = False
+    is_spare: bool = False
+
+
+class SheetLayout(BaseModel):
+    material: str
+    width: float
+    length: float
+    placements: list[Placement]
+    waste_percent: float
+
+
+class BoardLayout(BaseModel):
+    material: str
+    thickness: str
+    width: float
+    length: float
+    placements: list[Placement]
+    waste_percent: float
+
+
+class OptimizeSummary(BaseModel):
+    total_sheets: int
+    total_boards: int
+    avg_waste_percent: float
+    total_spare_parts: int
+
+
+class OptimizeRequest(BaseModel):
+    parts: list[Part]
+    shopping_list: list[ShoppingItem]
+    solid_species: str
+    sheet_type: str
+    buffer_config: BufferConfig = BufferConfig()
+    board_sizes: dict[str, BoardSizeConfig] = {}
+
+
+class OptimizeResponse(BaseModel):
+    sheets: list[SheetLayout]
+    boards: list[BoardLayout]
+    summary: OptimizeSummary
+    updated_shopping_list: list[ShoppingItem]
