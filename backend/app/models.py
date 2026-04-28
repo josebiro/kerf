@@ -89,3 +89,12 @@ class AnalyzeResponse(BaseModel):
     shopping_list: list[ShoppingItem]
     cost_estimate: CostEstimate
     display_units: str
+
+
+class ReportRequest(BaseModel):
+    session_id: str
+    solid_species: str
+    sheet_type: str
+    all_solid: bool = False
+    display_units: str = "in"
+    thumbnail: str | None = None  # base64 data URL from canvas
