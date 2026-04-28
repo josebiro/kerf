@@ -1,9 +1,12 @@
 <script lang="ts">
+	import { onMount } from 'svelte';
+	import { goto } from '$app/navigation';
 	import Upload from '$lib/components/Upload.svelte';
 	import ModelViewer, { type ModelViewerApi } from '$lib/components/ModelViewer.svelte';
 	import Configure from '$lib/components/Configure.svelte';
 	import Results from '$lib/components/Results.svelte';
 	import { analyze, downloadReport } from '$lib/api';
+	import { isAuthenticated } from '$lib/stores/auth';
 	import type { UploadResponse, AnalyzeResponse, DisplayUnits } from '$lib/types';
 
 	let uploadResult = $state<UploadResponse | null>(null);
@@ -42,6 +45,13 @@
 
 	async function handleDownloadPdf() {
 		if (!uploadResult || !lastConfig) return;
+
+		if (!$isAuthenticated) {
+			sessionStorage.setItem('pendingAction', 'downloadPdf');
+			goto(`/login?redirect=${encodeURIComponent('/')}`);
+			return;
+		}
+
 		downloadingPdf = true;
 		error = '';
 		try {
@@ -52,7 +62,13 @@
 				thumbnail,
 			});
 		} catch (e) {
-			error = e instanceof Error ? e.message : 'PDF generation failed';
+			const msg = e instanceof Error ? e.message : 'PDF generation failed';
+			if (msg === 'AUTH_REQUIRED') {
+				sessionStorage.setItem('pendingAction', 'downloadPdf');
+				goto(`/login?redirect=${encodeURIComponent('/')}`);
+				return;
+			}
+			error = msg;
 		} finally {
 			downloadingPdf = false;
 		}
@@ -65,15 +81,29 @@
 		status = '';
 		lastConfig = null;
 	}
+
+	onMount(() => {
+		const pending = sessionStorage.getItem('pendingAction');
+		if (pending === 'downloadPdf' && $isAuthenticated) {
+			sessionStorage.removeItem('pendingAction');
+		}
+	});
 </script>
 
 <div class="min-h-screen bg-gray-50">
 	<header class="bg-white border-b border-gray-200 px-6 py-4">
 		<div class="max-w-6xl mx-auto flex items-center justify-between">
-			<h1 class="text-xl font-semibold text-gray-800">Cut List Generator</h1>
-			{#if uploadResult}
-				<button onclick={reset} class="text-sm text-gray-500 hover:text-gray-700">New Project</button>
-			{/if}
+			<h1 class="text-xl font-semibold text-gray-800">Kerf</h1>
+			<div class="flex items-center gap-4">
+				{#if uploadResult}
+					<button onclick={reset} class="text-sm text-gray-500 hover:text-gray-700">New Project</button>
+				{/if}
+				{#if $isAuthenticated}
+					<button onclick={() => { import('$lib/supabase').then(m => m.supabase.auth.signOut()); }} class="text-sm text-gray-500 hover:text-gray-700">Sign Out</button>
+				{:else}
+					<a href="/login" class="text-sm text-blue-600 hover:text-blue-800">Sign In</a>
+				{/if}
+			</div>
 		</div>
 	</header>
 
@@ -106,7 +136,7 @@
 							<span>{status}</span>
 						</div>
 					{:else if analyzeResult}
-						<Results result={analyzeResult} onDownloadPdf={handleDownloadPdf} {downloadingPdf} />
+						<Results result={analyzeResult} onDownloadPdf={handleDownloadPdf} {downloadingPdf} isAuthenticated={$isAuthenticated} />
 					{:else}
 						<div class="text-center py-12 text-gray-400">
 							<p>Configure materials and click Analyze to see your cut list.</p>

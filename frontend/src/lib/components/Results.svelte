@@ -5,8 +5,9 @@
 		result: AnalyzeResponse;
 		onDownloadPdf?: () => void;
 		downloadingPdf?: boolean;
+		isAuthenticated?: boolean;
 	}
-	let { result, onDownloadPdf, downloadingPdf = false }: Props = $props();
+	let { result, onDownloadPdf, downloadingPdf = false, isAuthenticated = false }: Props = $props();
 	let activeTab = $state<'parts' | 'shopping' | 'cost'>('parts');
 
 	function formatDimensions(part: Part, units: DisplayUnits): string {
@@ -147,7 +148,13 @@
 				onclick={onDownloadPdf}
 				disabled={downloadingPdf}
 				class="bg-blue-600 text-white px-4 py-2 rounded text-sm hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed">
-				{downloadingPdf ? 'Generating PDF...' : 'Download PDF'}
+				{#if downloadingPdf}
+					Generating PDF...
+				{:else if !isAuthenticated}
+					Sign in to Download PDF
+				{:else}
+					Download PDF
+				{/if}
 			</button>
 		{/if}
 		<button onclick={exportCsv} class="bg-gray-800 text-white px-4 py-2 rounded text-sm hover:bg-gray-900">Export CSV</button>

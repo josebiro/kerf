@@ -1,11 +1,26 @@
 import type { UploadResponse, AnalyzeRequest, AnalyzeResponse } from './types';
+import { get } from 'svelte/store';
+import { session } from './stores/auth';
 
 const BASE = '/api';
+
+function authHeaders(): Record<string, string> {
+	const headers: Record<string, string> = {};
+	const s = get(session);
+	if (s?.access_token) {
+		headers['Authorization'] = `Bearer ${s.access_token}`;
+	}
+	return headers;
+}
 
 export async function uploadFile(file: File): Promise<UploadResponse> {
 	const formData = new FormData();
 	formData.append('file', file);
-	const response = await fetch(`${BASE}/upload`, { method: 'POST', body: formData });
+	const response = await fetch(`${BASE}/upload`, {
+		method: 'POST',
+		body: formData,
+		headers: authHeaders(),
+	});
 	if (!response.ok) {
 		const detail = await response.json().catch(() => ({ detail: 'Upload failed' }));
 		throw new Error(detail.detail || 'Upload failed');
@@ -16,7 +31,7 @@ export async function uploadFile(file: File): Promise<UploadResponse> {
 export async function analyze(request: AnalyzeRequest): Promise<AnalyzeResponse> {
 	const response = await fetch(`${BASE}/analyze`, {
 		method: 'POST',
-		headers: { 'Content-Type': 'application/json' },
+		headers: { 'Content-Type': 'application/json', ...authHeaders() },
 		body: JSON.stringify(request),
 	});
 	if (!response.ok) {
@@ -27,13 +42,13 @@ export async function analyze(request: AnalyzeRequest): Promise<AnalyzeResponse>
 }
 
 export async function getSpecies(): Promise<string[]> {
-	const response = await fetch(`${BASE}/species`);
+	const response = await fetch(`${BASE}/species`, { headers: authHeaders() });
 	if (!response.ok) throw new Error('Failed to fetch species');
 	return response.json();
 }
 
 export async function getSheetTypes(): Promise<string[]> {
-	const response = await fetch(`${BASE}/sheet-types`);
+	const response = await fetch(`${BASE}/sheet-types`, { headers: authHeaders() });
 	if (!response.ok) throw new Error('Failed to fetch sheet types');
 	return response.json();
 }
@@ -48,10 +63,13 @@ export async function downloadReport(request: {
 }): Promise<void> {
 	const response = await fetch(`${BASE}/report`, {
 		method: 'POST',
-		headers: { 'Content-Type': 'application/json' },
+		headers: { 'Content-Type': 'application/json', ...authHeaders() },
 		body: JSON.stringify(request),
 	});
 	if (!response.ok) {
+		if (response.status === 401) {
+			throw new Error('AUTH_REQUIRED');
+		}
 		const detail = await response.json().catch(() => ({ detail: 'Report generation failed' }));
 		throw new Error(detail.detail || 'Report generation failed');
 	}
