@@ -37,3 +37,29 @@ export async function getSheetTypes(): Promise<string[]> {
 	if (!response.ok) throw new Error('Failed to fetch sheet types');
 	return response.json();
 }
+
+export async function downloadReport(request: {
+	session_id: string;
+	solid_species: string;
+	sheet_type: string;
+	all_solid?: boolean;
+	display_units?: string;
+	thumbnail?: string | null;
+}): Promise<void> {
+	const response = await fetch(`${BASE}/report`, {
+		method: 'POST',
+		headers: { 'Content-Type': 'application/json' },
+		body: JSON.stringify(request),
+	});
+	if (!response.ok) {
+		const detail = await response.json().catch(() => ({ detail: 'Report generation failed' }));
+		throw new Error(detail.detail || 'Report generation failed');
+	}
+	const blob = await response.blob();
+	const url = URL.createObjectURL(blob);
+	const a = document.createElement('a');
+	a.href = url;
+	a.download = 'cut-list-report.pdf';
+	a.click();
+	URL.revokeObjectURL(url);
+}

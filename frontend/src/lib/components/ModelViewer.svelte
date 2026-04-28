@@ -1,3 +1,9 @@
+<script lang="ts" module>
+	export type ModelViewerApi = {
+		captureScreenshot: () => string | null;
+	};
+</script>
+
 <script lang="ts">
 	import { onMount, onDestroy } from 'svelte';
 	import * as THREE from 'three';
@@ -6,23 +12,33 @@
 
 	interface Props {
 		fileUrl: string;
+		api?: ModelViewerApi;
 	}
 
-	let { fileUrl }: Props = $props();
+	let { fileUrl, api = $bindable() }: Props = $props();
 	let container: HTMLDivElement;
 	let renderer: THREE.WebGLRenderer;
+	let scene: THREE.Scene;
+	let camera: THREE.PerspectiveCamera;
+	let controls: OrbitControls;
 	let animationId: number;
 
+	function captureScreenshot(): string | null {
+		if (!renderer || !scene || !camera) return null;
+		renderer.render(scene, camera);
+		return renderer.domElement.toDataURL('image/png');
+	}
+
 	onMount(() => {
-		const scene = new THREE.Scene();
+		scene = new THREE.Scene();
 		scene.background = new THREE.Color(0xf0f0f0);
-		const camera = new THREE.PerspectiveCamera(45, container.clientWidth / container.clientHeight, 0.1, 10000);
+		camera = new THREE.PerspectiveCamera(45, container.clientWidth / container.clientHeight, 0.1, 10000);
 		camera.position.set(200, 200, 200);
-		renderer = new THREE.WebGLRenderer({ antialias: true });
+		renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
 		renderer.setSize(container.clientWidth, container.clientHeight);
 		renderer.setPixelRatio(window.devicePixelRatio);
 		container.appendChild(renderer.domElement);
-		const controls = new OrbitControls(camera, renderer.domElement);
+		controls = new OrbitControls(camera, renderer.domElement);
 		controls.enableDamping = true;
 		const ambientLight = new THREE.AmbientLight(0x888888);
 		scene.add(ambientLight);
@@ -56,6 +72,8 @@
 			renderer.render(scene, camera);
 		}
 		animate();
+
+		api = { captureScreenshot };
 
 		const resizeObserver = new ResizeObserver(() => {
 			camera.aspect = container.clientWidth / container.clientHeight;

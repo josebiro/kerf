@@ -1,8 +1,12 @@
 <script lang="ts">
 	import type { AnalyzeResponse, Part, DisplayUnits } from '$lib/types';
 
-	interface Props { result: AnalyzeResponse; }
-	let { result }: Props = $props();
+	interface Props {
+		result: AnalyzeResponse;
+		onDownloadPdf?: () => void;
+		downloadingPdf?: boolean;
+	}
+	let { result, onDownloadPdf, downloadingPdf = false }: Props = $props();
 	let activeTab = $state<'parts' | 'shopping' | 'cost'>('parts');
 
 	function formatDimensions(part: Part, units: DisplayUnits): string {
@@ -138,6 +142,14 @@
 	{/if}
 
 	<div class="flex gap-3 mt-6">
+		{#if onDownloadPdf}
+			<button
+				onclick={onDownloadPdf}
+				disabled={downloadingPdf}
+				class="bg-blue-600 text-white px-4 py-2 rounded text-sm hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed">
+				{downloadingPdf ? 'Generating PDF...' : 'Download PDF'}
+			</button>
+		{/if}
 		<button onclick={exportCsv} class="bg-gray-800 text-white px-4 py-2 rounded text-sm hover:bg-gray-900">Export CSV</button>
 		<button onclick={() => window.print()} class="bg-gray-200 text-gray-700 px-4 py-2 rounded text-sm hover:bg-gray-300">Print</button>
 	</div>
