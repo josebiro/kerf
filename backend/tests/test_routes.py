@@ -2,6 +2,7 @@ import pytest
 from pathlib import Path
 from fastapi.testclient import TestClient
 from tests.conftest import build_3mf_bytes
+from app.auth import require_user
 
 
 @pytest.fixture
@@ -26,6 +27,36 @@ def client(tmp_path):
     session_mod.DEFAULT_BASE_DIR = original_base_dir
     registry_mod._instances.clear()
     registry_mod._instances.update(original_instances)
+
+
+@pytest.fixture
+def auth_client(tmp_path):
+    """Test client with auth dependency overridden."""
+    from app import session as session_mod
+    import app.suppliers.registry as registry_mod
+    from app.suppliers.woodworkers_source import WoodworkersSourceSupplier
+    from app.main import app
+    from app.auth import require_user
+
+    original_base_dir = session_mod.DEFAULT_BASE_DIR
+    session_mod.DEFAULT_BASE_DIR = tmp_path
+
+    original_instances = registry_mod._instances.copy()
+    registry_mod._instances["woodworkers_source"] = WoodworkersSourceSupplier(
+        cache_dir=None, use_scraper=False
+    )
+
+    async def mock_require_user():
+        return {"id": "test-user-123", "email": "test@example.com"}
+
+    app.dependency_overrides[require_user] = mock_require_user
+
+    yield TestClient(app)
+
+    session_mod.DEFAULT_BASE_DIR = original_base_dir
+    registry_mod._instances.clear()
+    registry_mod._instances.update(original_instances)
+    app.dependency_overrides.clear()
 
 
 class TestUpload:
@@ -125,9 +156,19 @@ class TestReport:
         resp = client.post("/api/upload", files={"file": ("test.3mf", data, "application/octet-stream")})
         return resp.json()["session_id"]
 
-    def test_report_returns_pdf(self, client):
+    def test_report_requires_auth(self, client):
+        """Report endpoint returns 401 without authentication."""
         session_id = self._upload(client)
         response = client.post("/api/report", json={
+            "session_id": session_id,
+            "solid_species": "Red Oak",
+            "sheet_type": "Baltic Birch",
+        })
+        assert response.status_code == 401
+
+    def test_report_returns_pdf(self, auth_client):
+        session_id = self._upload(auth_client)
+        response = auth_client.post("/api/report", json={
             "session_id": session_id,
             "solid_species": "Red Oak",
             "sheet_type": "Baltic Birch",
@@ -136,10 +177,10 @@ class TestReport:
         assert response.headers["content-type"] == "application/pdf"
         assert response.content[:5] == b"%PDF-"
 
-    def test_report_with_thumbnail(self, client):
-        session_id = self._upload(client)
+    def test_report_with_thumbnail(self, auth_client):
+        session_id = self._upload(auth_client)
         tiny_png = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg=="
-        response = client.post("/api/report", json={
+        response = auth_client.post("/api/report", json={
             "session_id": session_id,
             "solid_species": "Red Oak",
             "sheet_type": "Baltic Birch",
@@ -148,8 +189,8 @@ class TestReport:
         assert response.status_code == 200
         assert response.content[:5] == b"%PDF-"
 
-    def test_report_invalid_session(self, client):
-        response = client.post("/api/report", json={
+    def test_report_invalid_session(self, auth_client):
+        response = auth_client.post("/api/report", json={
             "session_id": "nonexistent",
             "solid_species": "Red Oak",
             "sheet_type": "Baltic Birch",

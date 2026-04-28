@@ -1,5 +1,5 @@
 from pathlib import Path
-from fastapi import FastAPI, HTTPException, UploadFile, File
+from fastapi import FastAPI, HTTPException, UploadFile, File, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, Response
 from app.models import (AnalyzeRequest, AnalyzeResponse, CostEstimate, Part, PartPreview, ShoppingItem, UploadResponse, ReportRequest)
@@ -10,6 +10,7 @@ from app.session import create_session, get_session_path, cleanup_expired_sessio
 from app.suppliers.registry import get_supplier
 from app.units import mm_to_inches
 from app.report import generate_report_pdf
+from app.auth import require_user
 
 app = FastAPI(title="Cut List Generator API")
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
@@ -105,7 +106,7 @@ async def get_sheet_types():
     return supplier.get_sheet_types()
 
 @app.post("/api/report")
-async def download_report(request: ReportRequest):
+async def download_report(request: ReportRequest, user: dict = Depends(require_user)):
     session_dir = get_session_path(request.session_id)
     if session_dir is None:
         raise HTTPException(status_code=404, detail="Session not found")
