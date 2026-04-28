@@ -10,6 +10,7 @@ class Product:
     price_per_unit: float
     unit: str       # "BF" or "sheet"
     category: str   # "solid" or "sheet"
+    url: str | None = None
 
 
 class SupplierBase(ABC):

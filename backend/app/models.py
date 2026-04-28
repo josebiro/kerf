@@ -36,6 +36,7 @@ class ShoppingItem(BaseModel):
     unit_price: float | None = None
     description: str = ""
     cut_pieces: list[str] = []
+    url: str | None = None
 
     @computed_field
     @property

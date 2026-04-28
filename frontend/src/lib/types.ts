@@ -32,6 +32,7 @@ export interface ShoppingItem {
 	subtotal: number | null;
 	description: string;
 	cut_pieces: string[];
+	url: string | null;
 }
 
 export interface CostEstimate {
