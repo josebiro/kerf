@@ -1,14 +1,15 @@
 from pathlib import Path
 from fastapi import FastAPI, HTTPException, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse
-from app.models import (AnalyzeRequest, AnalyzeResponse, CostEstimate, Part, PartPreview, ShoppingItem, UploadResponse)
+from fastapi.responses import FileResponse, Response
+from app.models import (AnalyzeRequest, AnalyzeResponse, CostEstimate, Part, PartPreview, ShoppingItem, UploadResponse, ReportRequest)
 from app.parser.threemf import parse_3mf
 from app.analyzer.geometry import compute_dimensions, classify_board_type
 from app.mapper.materials import map_part_to_stock, aggregate_shopping_list
 from app.session import create_session, get_session_path, cleanup_expired_sessions
 from app.suppliers.registry import get_supplier
 from app.units import mm_to_inches
+from app.report import generate_report_pdf
 
 app = FastAPI(title="Cut List Generator API")
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
@@ -102,3 +103,73 @@ async def get_species():
 async def get_sheet_types():
     supplier = get_supplier("woodworkers_source")
     return supplier.get_sheet_types()
+
+@app.post("/api/report")
+async def download_report(request: ReportRequest):
+    session_dir = get_session_path(request.session_id)
+    if session_dir is None:
+        raise HTTPException(status_code=404, detail="Session not found")
+    threemf_files = list(session_dir.glob("*.3mf"))
+    if not threemf_files:
+        raise HTTPException(status_code=404, detail="No 3MF file in session")
+
+    # Run the same analysis pipeline as /api/analyze
+    result = parse_3mf(threemf_files[0])
+    parts: list[Part] = []
+    seen_geometries: dict[str, int] = {}
+    for body in result.bodies:
+        length_mm, width_mm, thickness_mm = compute_dimensions(body.vertices)
+        length_in = mm_to_inches(length_mm)
+        width_in = mm_to_inches(width_mm)
+        thickness_in = mm_to_inches(thickness_mm)
+        board_type, notes = classify_board_type(length_in, width_in, thickness_in, all_solid=request.all_solid)
+        geo_key = f"{round(length_mm, 1)}x{round(width_mm, 1)}x{round(thickness_mm, 1)}"
+        if geo_key in seen_geometries:
+            idx = seen_geometries[geo_key]
+            parts[idx] = parts[idx].model_copy(update={"quantity": parts[idx].quantity + 1})
+            continue
+        part = Part(name=body.name, quantity=1, length_mm=round(length_mm, 2), width_mm=round(width_mm, 2),
+                    thickness_mm=round(thickness_mm, 2), board_type=board_type, stock="", notes=notes)
+        part = map_part_to_stock(part, species=request.solid_species, sheet_type=request.sheet_type)
+        seen_geometries[geo_key] = len(parts)
+        parts.append(part)
+
+    shopping_list = aggregate_shopping_list(parts)
+    supplier = get_supplier("woodworkers_source")
+    for i, item in enumerate(shopping_list):
+        updates: dict = {}
+        if item.unit == "BF":
+            price = supplier.get_price(request.solid_species, item.thickness, item.quantity)
+            if price is not None:
+                updates["unit_price"] = price / item.quantity if item.quantity > 0 else 0
+            url = supplier.get_product_url(request.solid_species, item.thickness)
+            if url is not None:
+                updates["url"] = url
+        else:
+            price = supplier.get_sheet_price(request.sheet_type, item.thickness)
+            if price is not None:
+                updates["unit_price"] = price
+            url = supplier.get_sheet_url(request.sheet_type, item.thickness)
+            if url is not None:
+                updates["url"] = url
+        if updates:
+            shopping_list[i] = item.model_copy(update=updates)
+
+    cost_estimate = CostEstimate(items=shopping_list)
+    analyze_response = AnalyzeResponse(
+        parts=parts, shopping_list=shopping_list,
+        cost_estimate=cost_estimate, display_units=request.display_units,
+    )
+
+    filename = threemf_files[0].name
+    pdf_bytes = generate_report_pdf(
+        analyze_response, filename,
+        request.solid_species, request.sheet_type,
+        thumbnail_data_url=request.thumbnail,
+    )
+
+    return Response(
+        content=pdf_bytes,
+        media_type="application/pdf",
+        headers={"Content-Disposition": f'attachment; filename="cut-list-report.pdf"'},
+    )

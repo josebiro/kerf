@@ -117,3 +117,41 @@ class TestCatalogEndpoints:
         response = client.get("/api/sheet-types")
         assert response.status_code == 200
         assert "Baltic Birch" in response.json()
+
+
+class TestReport:
+    def _upload(self, client) -> str:
+        data = build_3mf_bytes()
+        resp = client.post("/api/upload", files={"file": ("test.3mf", data, "application/octet-stream")})
+        return resp.json()["session_id"]
+
+    def test_report_returns_pdf(self, client):
+        session_id = self._upload(client)
+        response = client.post("/api/report", json={
+            "session_id": session_id,
+            "solid_species": "Red Oak",
+            "sheet_type": "Baltic Birch",
+        })
+        assert response.status_code == 200
+        assert response.headers["content-type"] == "application/pdf"
+        assert response.content[:5] == b"%PDF-"
+
+    def test_report_with_thumbnail(self, client):
+        session_id = self._upload(client)
+        tiny_png = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg=="
+        response = client.post("/api/report", json={
+            "session_id": session_id,
+            "solid_species": "Red Oak",
+            "sheet_type": "Baltic Birch",
+            "thumbnail": tiny_png,
+        })
+        assert response.status_code == 200
+        assert response.content[:5] == b"%PDF-"
+
+    def test_report_invalid_session(self, client):
+        response = client.post("/api/report", json={
+            "session_id": "nonexistent",
+            "solid_species": "Red Oak",
+            "sheet_type": "Baltic Birch",
+        })
+        assert response.status_code == 404
