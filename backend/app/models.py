@@ -18,6 +18,7 @@ class Part(BaseModel):
     board_type: BoardType
     stock: str
     notes: str
+    is_spare: bool = False
 
     def display_dimensions(self, units: str) -> str:
         if units == "mm":
