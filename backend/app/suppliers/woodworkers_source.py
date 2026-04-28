@@ -1,9 +1,17 @@
 import json
+import logging
+import re
 import time
 from pathlib import Path
 
 from app.suppliers.base import SupplierBase, Product
+from app.suppliers.scraper import scrape_pages
 
+logger = logging.getLogger(__name__)
+
+# ---------------------------------------------------------------------------
+# Static price tables (used as fallback when scraping is unavailable)
+# ---------------------------------------------------------------------------
 
 # Prices in $/BF by species and thickness
 SOLID_PRICES: dict[str, dict[str, float]] = {
@@ -96,72 +104,237 @@ SHEET_PRICES: dict[str, dict[str, float]] = {
     },
 }
 
+# ---------------------------------------------------------------------------
+# Page URL registry
+# ---------------------------------------------------------------------------
+
+BASE_URL = "https://www.woodworkerssource.com"
+
+LUMBER_PAGES: dict[str, str] = {
+    "Red Oak": "/lumber/red-oak.html",
+    "White Oak": "/lumber/white-oak-flat-sawn.html",
+    "Walnut": "/lumber/walnut.html",
+    "Hard Maple": "/lumber/hard-white-maple.html",
+    "Cherry": "/lumber/cherry.html",
+    "Poplar": "/lumber/poplar.html",
+    "Ash": "/lumber/ash.html",
+    "Sapele": "/lumber/exotic/Sapele.html",
+}
+
+PLYWOOD_PAGES: dict[str, str] = {
+    "Baltic Birch": "/plywood-sheet-goods/baltic-birch-plywood.html",
+}
+
 CACHE_TTL = 86400  # 24 hours in seconds
 CACHE_FILENAME = "woodworkers_source_catalog.json"
 
+# Pattern to strip thickness tokens and trailing keywords from product names
+_THICKNESS_RE = re.compile(
+    r"""
+    \s*
+    (?:
+        \d+/\d+         # fraction like 4/4, 8/4
+        |
+        \d+(?:\.\d+)?"  # decimal with inch mark like 3/4", 1/2"
+    )
+    """,
+    re.VERBOSE,
+)
+_SUFFIX_RE = re.compile(r"\b(Lumber|Plywood|Board|Sheet)\b.*$", re.IGNORECASE)
+
+
+def _extract_species(name: str) -> str:
+    """Strip thickness and common suffixes to get a species display name."""
+    s = _SUFFIX_RE.sub("", name)
+    s = _THICKNESS_RE.sub("", s)
+    return s.strip()
+
 
 class WoodworkersSourceSupplier(SupplierBase):
-    """Static-price supplier implementation for Woodworkers Source.
+    """Woodworkers Source supplier with optional live scraping.
 
-    Live scraping is a future enhancement; this version uses curated
-    baseline prices. A JSON cache with a 24-hour TTL avoids rebuilding
-    the catalog on every instantiation.
+    When ``use_scraper=True`` the supplier fetches live prices from the
+    Woodworkers Source website.  Static prices are used as a fallback when
+    scraping is unavailable or returns nothing.
+
+    Fallback chain in ``get_catalog()``:
+    1. Return in-memory catalog if already loaded.
+    2. Try fresh cache (< 24h TTL).
+    3. If use_scraper: try scraping → save to cache if successful.
+    4. If scraping failed + cache_dir exists: try stale cache (ignore TTL).
+    5. Final fallback: build from static prices (no URLs).
     """
 
-    def __init__(self, cache_dir: Path | None = None) -> None:
+    def __init__(
+        self,
+        cache_dir: Path | None = None,
+        use_scraper: bool = False,
+    ) -> None:
         self._cache_dir = cache_dir
+        self._use_scraper = use_scraper
         self._catalog: list[Product] | None = None
+
+        # Lookup indexes — populated lazily by _build_indexes()
+        # (species, thickness) -> price_per_unit
+        self._solid_prices: dict[tuple[str, str], float] = {}
+        # (species, thickness) -> url | None
+        self._solid_urls: dict[tuple[str, str], str | None] = {}
+        # (product_type, thickness) -> price_per_unit
+        self._sheet_prices: dict[tuple[str, str], float] = {}
+        # (product_type, thickness) -> url | None
+        self._sheet_urls: dict[tuple[str, str], str | None] = {}
 
     # ------------------------------------------------------------------
     # SupplierBase interface
     # ------------------------------------------------------------------
 
     def get_species_list(self) -> list[str]:
-        return list(SOLID_PRICES.keys())
+        self._ensure_indexes()
+        seen: list[str] = []
+        for (species, _) in self._solid_prices:
+            if species not in seen:
+                seen.append(species)
+        return seen
 
     def get_sheet_types(self) -> list[str]:
-        return list(SHEET_PRICES.keys())
+        self._ensure_indexes()
+        seen: list[str] = []
+        for (pt, _) in self._sheet_prices:
+            if pt not in seen:
+                seen.append(pt)
+        return seen
 
     def get_price(self, species: str, thickness: str, board_feet: float) -> float | None:
-        species_prices = SOLID_PRICES.get(species)
-        if species_prices is None:
-            return None
-        per_bf = species_prices.get(thickness)
+        self._ensure_indexes()
+        per_bf = self._solid_prices.get((species, thickness))
         if per_bf is None:
             return None
         return per_bf * board_feet
 
     def get_sheet_price(self, product_type: str, thickness: str) -> float | None:
-        type_prices = SHEET_PRICES.get(product_type)
-        if type_prices is None:
-            return None
-        return type_prices.get(thickness)
+        self._ensure_indexes()
+        return self._sheet_prices.get((product_type, thickness))
 
     def get_catalog(self) -> list[Product]:
         if self._catalog is not None:
             return self._catalog
 
-        # Try loading from cache first
+        # 1. Fresh cache
         if self._cache_dir is not None:
-            cached = self._load_cache()
+            cached = self._load_cache(ignore_ttl=False)
             if cached is not None:
                 self._catalog = cached
+                self._build_indexes()
                 return self._catalog
 
-        # Build fresh catalog
-        self._catalog = self._build_catalog()
+        # 2. Scraping
+        if self._use_scraper:
+            scraped = self._scrape()
+            if scraped:
+                self._catalog = scraped
+                if self._cache_dir is not None:
+                    self._save_cache(self._catalog)
+                self._build_indexes()
+                return self._catalog
 
-        # Persist to cache
+            # 3. Stale cache fallback after scrape failure
+            if self._cache_dir is not None:
+                stale = self._load_cache(ignore_ttl=True)
+                if stale is not None:
+                    logger.warning("Scraping failed; using stale cache")
+                    self._catalog = stale
+                    self._build_indexes()
+                    return self._catalog
+
+        # 4. Static fallback
+        self._catalog = self._build_static_catalog()
         if self._cache_dir is not None:
             self._save_cache(self._catalog)
-
+        self._build_indexes()
         return self._catalog
+
+    # ------------------------------------------------------------------
+    # URL lookup methods
+    # ------------------------------------------------------------------
+
+    def get_product_url(self, species: str, thickness: str) -> str | None:
+        """Return the product URL for a solid-wood species+thickness, or None."""
+        self._ensure_indexes()
+        return self._solid_urls.get((species, thickness))
+
+    def get_sheet_url(self, product_type: str, thickness: str) -> str | None:
+        """Return the product URL for a sheet good type+thickness, or None."""
+        self._ensure_indexes()
+        return self._sheet_urls.get((product_type, thickness))
 
     # ------------------------------------------------------------------
     # Internal helpers
     # ------------------------------------------------------------------
 
-    def _build_catalog(self) -> list[Product]:
+    def _ensure_indexes(self) -> None:
+        """Make sure the catalog and indexes are loaded."""
+        if self._catalog is None:
+            self.get_catalog()
+
+    def _build_indexes(self) -> None:
+        """Build lookup dicts from self._catalog."""
+        self._solid_prices = {}
+        self._solid_urls = {}
+        self._sheet_prices = {}
+        self._sheet_urls = {}
+        for p in self._catalog or []:
+            key = (p.species, p.thickness)
+            if p.category == "solid":
+                self._solid_prices[key] = p.price_per_unit
+                self._solid_urls[key] = p.url
+            else:
+                self._sheet_prices[key] = p.price_per_unit
+                self._sheet_urls[key] = p.url
+
+    def _scrape(self) -> list[Product]:
+        """Fetch live prices and convert to Product objects."""
+        urls = [BASE_URL + path for path in LUMBER_PAGES.values()]
+        urls += [BASE_URL + path for path in PLYWOOD_PAGES.values()]
+
+        try:
+            raw = scrape_pages(urls, BASE_URL)
+        except Exception as exc:
+            logger.warning("scrape_pages failed: %s", exc)
+            return []
+
+        if not raw:
+            return []
+
+        products: list[Product] = []
+        for item in raw:
+            name = item.get("name", "")
+            price = item.get("price")
+            unit = item.get("unit", "BF")
+            thickness = item.get("thickness")
+            url = item.get("url")
+
+            if price is None or price <= 0:
+                continue
+
+            species = _extract_species(name)
+            category = "solid" if unit == "BF" else "sheet"
+
+            products.append(
+                Product(
+                    name=name,
+                    species=species,
+                    thickness=thickness or "",
+                    price_per_unit=price,
+                    unit=unit,
+                    category=category,
+                    url=url,
+                )
+            )
+
+        return products
+
+    def _build_static_catalog(self) -> list[Product]:
+        """Build catalog from static price tables (no URLs)."""
         products: list[Product] = []
 
         for species, thicknesses in SOLID_PRICES.items():
@@ -174,6 +347,7 @@ class WoodworkersSourceSupplier(SupplierBase):
                         price_per_unit=price_per_bf,
                         unit="BF",
                         category="solid",
+                        url=None,
                     )
                 )
 
@@ -187,6 +361,7 @@ class WoodworkersSourceSupplier(SupplierBase):
                         price_per_unit=price_per_sheet,
                         unit="sheet",
                         category="sheet",
+                        url=None,
                     )
                 )
 
@@ -207,20 +382,21 @@ class WoodworkersSourceSupplier(SupplierBase):
                     "price_per_unit": p.price_per_unit,
                     "unit": p.unit,
                     "category": p.category,
+                    "url": p.url,
                 }
                 for p in catalog
             ],
         }
         self._cache_path().write_text(json.dumps(payload, indent=2))
 
-    def _load_cache(self) -> list[Product] | None:
+    def _load_cache(self, ignore_ttl: bool = False) -> list[Product] | None:
         path = self._cache_path()
         if not path.exists():
             return None
         try:
             payload = json.loads(path.read_text())
             age = time.time() - payload["timestamp"]
-            if age > CACHE_TTL:
+            if not ignore_ttl and age > CACHE_TTL:
                 return None
             return [Product(**item) for item in payload["products"]]
         except (KeyError, TypeError, json.JSONDecodeError):
