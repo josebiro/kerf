@@ -72,19 +72,28 @@
 	{/if}
 
 	{#if activeTab === 'shopping'}
-		<div class="overflow-x-auto">
-			<table class="w-full text-sm">
-				<thead><tr class="border-b border-gray-300 text-left text-gray-600">
-					<th class="py-2 pr-4">Material</th><th class="py-2 pr-4">Thickness</th><th class="py-2 pr-4">Quantity</th><th class="py-2 pr-4">Unit</th>
-				</tr></thead>
-				<tbody>
-					{#each result.shopping_list as item}
-						<tr class="border-b border-gray-100">
-							<td class="py-2 pr-4">{item.material}</td><td class="py-2 pr-4">{item.thickness}</td><td class="py-2 pr-4">{item.quantity}</td><td class="py-2 pr-4">{item.unit}</td>
-						</tr>
-					{/each}
-				</tbody>
-			</table>
+		<div class="space-y-4">
+			{#each result.shopping_list as item}
+				<div class="border border-gray-200 rounded-lg p-4">
+					<div class="flex justify-between items-start mb-2">
+						<div>
+							<h4 class="font-medium text-gray-800">{item.material}</h4>
+							<p class="text-sm text-gray-500">{item.description}</p>
+						</div>
+						<span class="text-sm font-mono bg-gray-100 px-2 py-1 rounded">{item.quantity} {item.unit}</span>
+					</div>
+					{#if item.cut_pieces.length > 0}
+						<div class="mt-2">
+							<p class="text-xs text-gray-500 uppercase tracking-wide mb-1">Cut pieces</p>
+							<div class="flex flex-wrap gap-2">
+								{#each item.cut_pieces as piece}
+									<span class="text-xs font-mono bg-gray-50 border border-gray-200 px-2 py-1 rounded">{piece}</span>
+								{/each}
+							</div>
+						</div>
+					{/if}
+				</div>
+			{/each}
 		</div>
 	{/if}
 

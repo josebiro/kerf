@@ -34,6 +34,8 @@ class ShoppingItem(BaseModel):
     quantity: float
     unit: str
     unit_price: float | None = None
+    description: str = ""
+    cut_pieces: list[str] = []
 
     @computed_field
     @property

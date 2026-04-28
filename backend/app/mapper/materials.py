@@ -73,30 +73,78 @@ def map_part_to_stock(part: Part, species: str = "", sheet_type: str = "") -> Pa
     return part.model_copy(update={"stock": stock})
 
 
+def _format_dim(inches: float) -> str:
+    """Format inches as a clean string (drop trailing zeros)."""
+    if inches == int(inches):
+        return f'{int(inches)}"'
+    return f'{inches:.2f}'.rstrip("0").rstrip(".") + '"'
+
+
 def aggregate_shopping_list(parts: list[Part]) -> list[ShoppingItem]:
-    solid_by_stock: dict[str, float] = {}
-    sheet_by_stock: dict[str, list[tuple[float, float]]] = {}
+    # Track per-part details for descriptions
+    solid_by_stock: dict[str, list[tuple[float, float, float, int, str]]] = {}  # stock → [(l, w, t, qty, name)]
+    sheet_by_stock: dict[str, list[tuple[float, float, int, str]]] = {}  # stock → [(w, l, qty, name)]
+
     for part in parts:
         if part.board_type in (BoardType.SOLID, BoardType.THICK_STOCK):
             thickness_in = mm_to_inches(part.thickness_mm)
             width_in = mm_to_inches(part.width_mm)
             length_in = mm_to_inches(part.length_mm)
-            _, w_rough, t_rough = add_milling_allowance(length_in, width_in, thickness_in)
-            l_rough = length_in + _MILL_LENGTH
-            bf = calculate_board_feet(t_rough, w_rough, l_rough) * part.quantity
-            solid_by_stock[part.stock] = solid_by_stock.get(part.stock, 0.0) + bf
+            entries = solid_by_stock.setdefault(part.stock, [])
+            entries.append((length_in, width_in, thickness_in, part.quantity, part.name))
         else:
             width_in = mm_to_inches(part.width_mm) + 2 * _KERF
             length_in = mm_to_inches(part.length_mm) + 2 * _KERF
-            sheet_parts = sheet_by_stock.setdefault(part.stock, [])
-            for _ in range(part.quantity):
-                sheet_parts.append((width_in, length_in))
+            entries = sheet_by_stock.setdefault(part.stock, [])
+            entries.append((width_in, length_in, part.quantity, part.name))
+
     items: list[ShoppingItem] = []
-    for stock, bf in solid_by_stock.items():
+
+    for stock, part_entries in solid_by_stock.items():
+        total_bf = 0.0
+        cut_pieces: list[str] = []
+        max_width = 0.0
+        max_length = 0.0
+
+        for length_in, width_in, thickness_in, qty, name in part_entries:
+            _, w_rough, t_rough = add_milling_allowance(length_in, width_in, thickness_in)
+            l_rough = length_in + _MILL_LENGTH
+            bf = calculate_board_feet(t_rough, w_rough, l_rough) * qty
+            total_bf += bf
+            max_width = max(max_width, w_rough)
+            max_length = max(max_length, l_rough)
+            piece = f'{_format_dim(length_in)} × {_format_dim(width_in)}'
+            if qty > 1:
+                piece += f" (×{qty})"
+            cut_pieces.append(piece)
+
         thickness = stock.split()[0] if stock else ""
-        items.append(ShoppingItem(material=stock, thickness=thickness, quantity=round(bf, 1), unit="BF"))
-    for stock, part_dims in sheet_by_stock.items():
+        description = f'Boards min {_format_dim(max_width)} wide × {_format_dim(max_length)} long'
+
+        items.append(ShoppingItem(
+            material=stock, thickness=thickness, quantity=round(total_bf, 1),
+            unit="BF", description=description, cut_pieces=cut_pieces,
+        ))
+
+    for stock, part_entries in sheet_by_stock.items():
+        all_dims: list[tuple[float, float]] = []
+        cut_pieces: list[str] = []
+
+        for width_in, length_in, qty, name in part_entries:
+            for _ in range(qty):
+                all_dims.append((width_in, length_in))
+            piece = f'{_format_dim(length_in)} × {_format_dim(width_in)}'
+            if qty > 1:
+                piece += f" (×{qty})"
+            cut_pieces.append(piece)
+
         thickness = stock.split('"')[0] + '"' if '"' in stock else ""
-        sheets = calculate_sheets_needed(part_dims)
-        items.append(ShoppingItem(material=stock, thickness=thickness, quantity=float(sheets), unit="sheets"))
+        sheets = calculate_sheets_needed(all_dims)
+        description = f"{sheets} × 4' × 8' sheet{'s' if sheets > 1 else ''}"
+
+        items.append(ShoppingItem(
+            material=stock, thickness=thickness, quantity=float(sheets),
+            unit="sheets", description=description, cut_pieces=cut_pieces,
+        ))
+
     return items

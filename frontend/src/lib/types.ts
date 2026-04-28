@@ -30,6 +30,8 @@ export interface ShoppingItem {
 	unit: string;
 	unit_price: number | null;
 	subtotal: number | null;
+	description: string;
+	cut_pieces: string[];
 }
 
 export interface CostEstimate {
