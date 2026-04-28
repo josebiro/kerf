@@ -6,13 +6,15 @@
 	import ModelViewer, { type ModelViewerApi } from '$lib/components/ModelViewer.svelte';
 	import Configure from '$lib/components/Configure.svelte';
 	import Results from '$lib/components/Results.svelte';
-	import { analyze, downloadReport, saveProject, getProjectDetail } from '$lib/api';
+	import { analyze, downloadReport, saveProject, getProjectDetail, optimizeCuts } from '$lib/api';
 	import { isAuthenticated } from '$lib/stores/auth';
-	import type { UploadResponse, AnalyzeResponse, DisplayUnits } from '$lib/types';
+	import type { UploadResponse, AnalyzeResponse, DisplayUnits, OptimizeResponse, BufferConfig, BoardSizeConfig } from '$lib/types';
 
 	let uploadResult = $state<UploadResponse | null>(null);
 	let analyzeResult = $state<AnalyzeResponse | null>(null);
+	let optimizeResult = $state<OptimizeResponse | null>(null);
 	let analyzing = $state(false);
+	let optimizing = $state(false);
 	let downloadingPdf = $state(false);
 	let savingProject = $state(false);
 	let projectSaved = $state(false);
@@ -24,6 +26,7 @@
 	function handleUpload(result: UploadResponse) {
 		uploadResult = result;
 		analyzeResult = null;
+		optimizeResult = null;
 		error = '';
 		projectSaved = false;
 	}
@@ -40,6 +43,22 @@
 			const result = await analyze({ session_id: uploadResult.session_id, ...config });
 			status = '';
 			analyzeResult = result;
+
+			// Auto-optimize
+			optimizing = true;
+			try {
+				optimizeResult = await optimizeCuts({
+					parts: result.parts,
+					shopping_list: result.shopping_list,
+					solid_species: config.solid_species,
+					sheet_type: config.sheet_type,
+				});
+			} catch (e) {
+				// Optimization is optional — don't show error
+				optimizeResult = null;
+			} finally {
+				optimizing = false;
+			}
 		} catch (e) {
 			error = e instanceof Error ? e.message : 'Analysis failed';
 			status = '';
@@ -104,9 +123,29 @@
 		}
 	}
 
+	async function handleReoptimize(bufferConfig: BufferConfig, boardSizes: Record<string, BoardSizeConfig>) {
+		if (!analyzeResult || !lastConfig) return;
+		optimizing = true;
+		try {
+			optimizeResult = await optimizeCuts({
+				parts: analyzeResult.parts,
+				shopping_list: analyzeResult.shopping_list,
+				solid_species: lastConfig.solid_species,
+				sheet_type: lastConfig.sheet_type,
+				buffer_config: bufferConfig,
+				board_sizes: boardSizes,
+			});
+		} catch (e) {
+			error = e instanceof Error ? e.message : 'Optimization failed';
+		} finally {
+			optimizing = false;
+		}
+	}
+
 	function reset() {
 		uploadResult = null;
 		analyzeResult = null;
+		optimizeResult = null;
 		error = '';
 		status = '';
 		lastConfig = null;
@@ -198,7 +237,7 @@
 							<span>{status}</span>
 						</div>
 					{:else if analyzeResult}
-						<Results result={analyzeResult} onDownloadPdf={handleDownloadPdf} {downloadingPdf} isAuthenticated={$isAuthenticated} onSaveProject={handleSaveProject} {savingProject} {projectSaved} />
+						<Results result={analyzeResult} onDownloadPdf={handleDownloadPdf} {downloadingPdf} isAuthenticated={$isAuthenticated} onSaveProject={handleSaveProject} {savingProject} {projectSaved} {optimizeResult} onReoptimize={handleReoptimize} {optimizing} />
 					{:else}
 						<div class="text-center py-12 text-gray-400">
 							<p>Configure materials and click Analyze to see your cut list.</p>

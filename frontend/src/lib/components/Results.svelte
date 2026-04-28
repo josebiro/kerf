@@ -1,5 +1,6 @@
 <script lang="ts">
-	import type { AnalyzeResponse, Part, DisplayUnits } from '$lib/types';
+	import type { AnalyzeResponse, Part, DisplayUnits, OptimizeResponse, BufferConfig, BoardSizeConfig } from '$lib/types';
+	import CutLayout from './CutLayout.svelte';
 
 	interface Props {
 		result: AnalyzeResponse;
@@ -9,9 +10,12 @@
 		onSaveProject?: () => void;
 		savingProject?: boolean;
 		projectSaved?: boolean;
+		optimizeResult?: OptimizeResponse | null;
+		onReoptimize?: (config: BufferConfig, sizes: Record<string, BoardSizeConfig>) => void;
+		optimizing?: boolean;
 	}
-	let { result, onDownloadPdf, downloadingPdf = false, isAuthenticated = false, onSaveProject, savingProject = false, projectSaved = false }: Props = $props();
-	let activeTab = $state<'parts' | 'shopping' | 'cost'>('parts');
+	let { result, onDownloadPdf, downloadingPdf = false, isAuthenticated = false, onSaveProject, savingProject = false, projectSaved = false, optimizeResult = null, onReoptimize, optimizing = false }: Props = $props();
+	let activeTab = $state<'parts' | 'shopping' | 'cost' | 'cutlayout'>('parts');
 
 	function formatDimensions(part: Part, units: DisplayUnits): string {
 		if (units === 'mm') return `${part.length_mm} × ${part.width_mm} × ${part.thickness_mm} mm`;
@@ -55,6 +59,9 @@
 		<button class="px-4 py-2 text-sm rounded-t {activeTab === 'parts' ? 'bg-white border border-b-0 border-gray-300 font-medium' : 'bg-gray-100 text-gray-500'}" onclick={() => (activeTab = 'parts')}>Parts List</button>
 		<button class="px-4 py-2 text-sm rounded-t {activeTab === 'shopping' ? 'bg-white border border-b-0 border-gray-300 font-medium' : 'bg-gray-100 text-gray-500'}" onclick={() => (activeTab = 'shopping')}>Shopping List</button>
 		<button class="px-4 py-2 text-sm rounded-t {activeTab === 'cost' ? 'bg-white border border-b-0 border-gray-300 font-medium' : 'bg-gray-100 text-gray-500'}" onclick={() => (activeTab = 'cost')}>Cost Estimate</button>
+		{#if optimizeResult}
+			<button class="px-4 py-2 text-sm rounded-t {activeTab === 'cutlayout' ? 'bg-white border border-b-0 border-gray-300 font-medium' : 'bg-gray-100 text-gray-500'}" onclick={() => (activeTab = 'cutlayout')}>Cut Layout</button>
+		{/if}
 	</div>
 
 	{#if activeTab === 'parts'}
@@ -81,7 +88,7 @@
 
 	{#if activeTab === 'shopping'}
 		<div class="space-y-4">
-			{#each result.shopping_list as item}
+			{#each (optimizeResult?.updated_shopping_list ?? result.shopping_list) as item}
 				<div class="border border-gray-200 rounded-lg p-4">
 					<div class="flex justify-between items-start mb-2">
 						<div>
@@ -143,6 +150,10 @@
 		{#if result.cost_estimate.has_missing_prices}
 			<p class="mt-2 text-sm text-amber-600">Some prices are unavailable. Total is a partial estimate.</p>
 		{/if}
+	{/if}
+
+	{#if activeTab === 'cutlayout' && optimizeResult && onReoptimize}
+		<CutLayout result={optimizeResult} {onReoptimize} {optimizing} />
 	{/if}
 
 	<div class="flex gap-3 mt-6">

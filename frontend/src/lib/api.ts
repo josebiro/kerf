@@ -1,4 +1,4 @@
-import type { UploadResponse, AnalyzeRequest, AnalyzeResponse, ProjectSummary, ProjectDetail } from './types';
+import type { UploadResponse, AnalyzeRequest, AnalyzeResponse, ProjectSummary, ProjectDetail, OptimizeRequest, OptimizeResponse } from './types';
 import { get } from 'svelte/store';
 import { session } from './stores/auth';
 
@@ -134,4 +134,17 @@ export async function deleteProject(id: string): Promise<void> {
 		if (response.status === 401) throw new Error('AUTH_REQUIRED');
 		throw new Error('Failed to delete project');
 	}
+}
+
+export async function optimizeCuts(request: OptimizeRequest): Promise<OptimizeResponse> {
+	const response = await fetch(`${BASE}/optimize`, {
+		method: 'POST',
+		headers: { 'Content-Type': 'application/json', ...authHeaders() },
+		body: JSON.stringify(request),
+	});
+	if (!response.ok) {
+		const detail = await response.json().catch(() => ({ detail: 'Optimization failed' }));
+		throw new Error(detail.detail || 'Optimization failed');
+	}
+	return response.json();
 }
