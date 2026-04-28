@@ -8,11 +8,24 @@ from tests.conftest import build_3mf_bytes
 def client(tmp_path):
     """Create a test client with a temp session directory."""
     from app import session as session_mod
-    original = session_mod.DEFAULT_BASE_DIR
+    import app.suppliers.registry as registry_mod
+    from app.suppliers.woodworkers_source import WoodworkersSourceSupplier
+
+    original_base_dir = session_mod.DEFAULT_BASE_DIR
     session_mod.DEFAULT_BASE_DIR = tmp_path
+
+    # Inject a static-only supplier so route tests don't hit the live scraper
+    original_instances = registry_mod._instances.copy()
+    registry_mod._instances["woodworkers_source"] = WoodworkersSourceSupplier(
+        cache_dir=None, use_scraper=False
+    )
+
     from app.main import app
     yield TestClient(app)
-    session_mod.DEFAULT_BASE_DIR = original
+
+    session_mod.DEFAULT_BASE_DIR = original_base_dir
+    registry_mod._instances.clear()
+    registry_mod._instances.update(original_instances)
 
 
 class TestUpload:

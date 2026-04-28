@@ -63,15 +63,23 @@ async def analyze(request: AnalyzeRequest):
     shopping_list = aggregate_shopping_list(parts)
     supplier = get_supplier("woodworkers_source")
     for i, item in enumerate(shopping_list):
+        updates: dict = {}
         if item.unit == "BF":
             price = supplier.get_price(request.solid_species, item.thickness, item.quantity)
             if price is not None:
-                unit_price = price / item.quantity if item.quantity > 0 else 0
-                shopping_list[i] = item.model_copy(update={"unit_price": unit_price})
+                updates["unit_price"] = price / item.quantity if item.quantity > 0 else 0
+            url = supplier.get_product_url(request.solid_species, item.thickness)
+            if url is not None:
+                updates["url"] = url
         else:
             price = supplier.get_sheet_price(request.sheet_type, item.thickness)
             if price is not None:
-                shopping_list[i] = item.model_copy(update={"unit_price": price})
+                updates["unit_price"] = price
+            url = supplier.get_sheet_url(request.sheet_type, item.thickness)
+            if url is not None:
+                updates["url"] = url
+        if updates:
+            shopping_list[i] = item.model_copy(update=updates)
     cost_estimate = CostEstimate(items=shopping_list)
     return AnalyzeResponse(parts=parts, shopping_list=shopping_list, cost_estimate=cost_estimate, display_units=request.display_units)
 

@@ -77,7 +77,15 @@
 				<div class="border border-gray-200 rounded-lg p-4">
 					<div class="flex justify-between items-start mb-2">
 						<div>
-							<h4 class="font-medium text-gray-800">{item.material}</h4>
+							<h4 class="font-medium text-gray-800">
+							{item.material}
+							{#if item.url}
+								<a href={item.url} target="_blank" rel="noopener noreferrer"
+									class="ml-2 text-xs text-blue-600 hover:text-blue-800 font-normal">
+									View on Woodworkers Source ↗
+								</a>
+							{/if}
+						</h4>
 							<p class="text-sm text-gray-500">{item.description}</p>
 						</div>
 						<span class="text-sm font-mono bg-gray-100 px-2 py-1 rounded">{item.quantity} {item.unit}</span>
@@ -106,7 +114,16 @@
 				<tbody>
 					{#each result.cost_estimate.items as item}
 						<tr class="border-b border-gray-100">
-							<td class="py-2 pr-4">{item.material}</td><td class="py-2 pr-4">{item.quantity} {item.unit}</td><td class="py-2 pr-4">{formatPrice(item.unit_price)}</td><td class="py-2">{formatPrice(item.subtotal)}</td>
+							<td class="py-2 pr-4">
+								{#if item.url}
+									<a href={item.url} target="_blank" rel="noopener noreferrer"
+										class="text-blue-600 hover:text-blue-800 hover:underline">
+										{item.material} ↗
+									</a>
+								{:else}
+									{item.material}
+								{/if}
+							</td><td class="py-2 pr-4">{item.quantity} {item.unit}</td><td class="py-2 pr-4">{formatPrice(item.unit_price)}</td><td class="py-2">{formatPrice(item.subtotal)}</td>
 						</tr>
 					{/each}
 				</tbody>
