@@ -1,6 +1,7 @@
 import pytest
 from pathlib import Path
 from fastapi.testclient import TestClient
+from unittest.mock import patch
 from tests.conftest import build_3mf_bytes
 from app.auth import require_user
 
@@ -196,3 +197,96 @@ class TestReport:
             "sheet_type": "Baltic Birch",
         })
         assert response.status_code == 404
+
+
+class TestProjects:
+    def _upload_and_analyze(self, client) -> tuple[str, dict]:
+        data = build_3mf_bytes()
+        resp = client.post("/api/upload", files={"file": ("test.3mf", data, "application/octet-stream")})
+        session_id = resp.json()["session_id"]
+        resp2 = client.post("/api/analyze", json={
+            "session_id": session_id, "solid_species": "Red Oak", "sheet_type": "Baltic Birch"
+        })
+        return session_id, resp2.json()
+
+    @patch("app.main.storage_upload")
+    @patch("app.main.create_project")
+    def test_save_project(self, mock_create, mock_upload, auth_client):
+        mock_create.return_value = "proj-123"
+        session_id, analysis = self._upload_and_analyze(auth_client)
+        response = auth_client.post("/api/projects", json={
+            "name": "Test Project",
+            "filename": "test.3mf",
+            "session_id": session_id,
+            "solid_species": "Red Oak",
+            "sheet_type": "Baltic Birch",
+            "analysis_result": analysis,
+        })
+        assert response.status_code == 201
+        assert "id" in response.json()
+
+    def test_save_project_requires_auth(self, client):
+        response = client.post("/api/projects", json={
+            "name": "Test", "filename": "test.3mf", "session_id": "x",
+            "solid_species": "Red Oak", "sheet_type": "Baltic Birch",
+            "analysis_result": {"parts": [], "shopping_list": [], "cost_estimate": {"items": []}, "display_units": "in"},
+        })
+        assert response.status_code == 401
+
+    @patch("app.main.list_projects")
+    @patch("app.main.get_signed_url")
+    def test_list_projects(self, mock_signed, mock_list, auth_client):
+        mock_list.return_value = [{
+            "id": "p1", "name": "Test", "filename": "test.3mf",
+            "solid_species": "Red Oak", "sheet_type": "Baltic Birch",
+            "analysis_result": {"parts": [{"name": "A", "quantity": 2, "length_mm": 100, "width_mm": 50, "thickness_mm": 19, "board_type": "solid", "stock": "4/4 Red Oak", "notes": ""}], "shopping_list": [], "cost_estimate": {"items": []}, "display_units": "in"},
+            "thumbnail_path": "u/p/thumb.png",
+            "created_at": "2026-04-28T00:00:00", "updated_at": "2026-04-28T00:00:00",
+        }]
+        mock_signed.return_value = "https://signed-url"
+
+        response = auth_client.get("/api/projects")
+        assert response.status_code == 200
+        data = response.json()
+        assert len(data) == 1
+        assert data[0]["name"] == "Test"
+        assert data[0]["part_count"] == 2
+
+    def test_list_projects_requires_auth(self, client):
+        response = client.get("/api/projects")
+        assert response.status_code == 401
+
+    @patch("app.main.get_project")
+    @patch("app.main.get_signed_url")
+    def test_get_project_detail(self, mock_signed, mock_get, auth_client):
+        mock_get.return_value = {
+            "id": "p1", "name": "Test", "filename": "test.3mf",
+            "solid_species": "Red Oak", "sheet_type": "Baltic Birch",
+            "all_solid": False, "display_units": "in",
+            "analysis_result": {"parts": [], "shopping_list": [], "cost_estimate": {"items": []}, "display_units": "in"},
+            "file_path": "u/p/model.3mf", "thumbnail_path": "u/p/thumb.png",
+            "created_at": "2026-04-28T00:00:00", "updated_at": "2026-04-28T00:00:00",
+        }
+        mock_signed.return_value = "https://signed-url"
+
+        response = auth_client.get("/api/projects/p1")
+        assert response.status_code == 200
+        assert response.json()["name"] == "Test"
+
+    @patch("app.main.get_project")
+    def test_get_project_not_found(self, mock_get, auth_client):
+        mock_get.return_value = None
+        response = auth_client.get("/api/projects/nonexistent")
+        assert response.status_code == 404
+
+    @patch("app.main.get_project")
+    @patch("app.main.delete_files")
+    @patch("app.main.delete_project")
+    def test_delete_project(self, mock_del_db, mock_del_files, mock_get, auth_client):
+        mock_get.return_value = {
+            "id": "p1", "file_path": "u/p/model.3mf", "thumbnail_path": "u/p/thumb.png"
+        }
+        response = auth_client.delete("/api/projects/p1")
+        assert response.status_code == 204
+        mock_del_files.assert_called_once()
+        mock_del_db.assert_called_once()

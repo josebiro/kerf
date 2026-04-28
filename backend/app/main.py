@@ -3,6 +3,7 @@ from fastapi import FastAPI, HTTPException, UploadFile, File, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, Response
 from app.models import (AnalyzeRequest, AnalyzeResponse, CostEstimate, Part, PartPreview, ShoppingItem, UploadResponse, ReportRequest)
+from app.models import ProjectCreate, ProjectSummary, ProjectDetail
 from app.parser.threemf import parse_3mf
 from app.analyzer.geometry import compute_dimensions, classify_board_type
 from app.mapper.materials import map_part_to_stock, aggregate_shopping_list
@@ -11,6 +12,10 @@ from app.suppliers.registry import get_supplier
 from app.units import mm_to_inches
 from app.report import generate_report_pdf
 from app.auth import require_user
+from app.storage import upload_file as storage_upload, get_signed_url, delete_files
+from app.database import create_project, list_projects, get_project, delete_project
+import base64
+import uuid
 
 app = FastAPI(title="Cut List Generator API")
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
@@ -174,3 +179,119 @@ async def download_report(request: ReportRequest, user: dict = Depends(require_u
         media_type="application/pdf",
         headers={"Content-Disposition": f'attachment; filename="cut-list-report.pdf"'},
     )
+
+
+@app.post("/api/projects", status_code=201)
+async def save_project(request: ProjectCreate, user: dict = Depends(require_user)):
+    session_dir = get_session_path(request.session_id)
+    if session_dir is None:
+        raise HTTPException(status_code=404, detail="Session not found")
+    threemf_files = list(session_dir.glob("*.3mf"))
+    if not threemf_files:
+        raise HTTPException(status_code=404, detail="No 3MF file in session")
+
+    project_id = str(uuid.uuid4())
+    user_id = user["id"]
+
+    file_path = f"{user_id}/{project_id}/model.3mf"
+    file_bytes = threemf_files[0].read_bytes()
+    storage_upload(file_path, file_bytes, "application/octet-stream")
+
+    thumbnail_path = None
+    if request.thumbnail:
+        thumbnail_path = f"{user_id}/{project_id}/thumbnail.png"
+        b64_data = request.thumbnail.split(",", 1)[-1]
+        thumb_bytes = base64.b64decode(b64_data)
+        storage_upload(thumbnail_path, thumb_bytes, "image/png")
+
+    analysis_dict = request.analysis_result.model_dump(mode="json")
+    create_project(
+        user_id=user_id,
+        name=request.name,
+        filename=request.filename,
+        solid_species=request.solid_species,
+        sheet_type=request.sheet_type,
+        all_solid=request.all_solid,
+        display_units=request.display_units,
+        analysis_result=analysis_dict,
+        file_path=file_path,
+        thumbnail_path=thumbnail_path,
+    )
+
+    return {"id": project_id, "message": "Project saved"}
+
+
+@app.get("/api/projects")
+async def list_user_projects(user: dict = Depends(require_user)):
+    rows = list_projects(user["id"])
+    summaries = []
+    for row in rows:
+        analysis = row.get("analysis_result", {})
+        parts = analysis.get("parts", [])
+        cost_est = analysis.get("cost_estimate", {})
+
+        total_parts = sum(p.get("quantity", 1) for p in parts)
+        unique_parts = len(parts)
+        estimated_cost = cost_est.get("total")
+
+        thumbnail_url = None
+        if row.get("thumbnail_path"):
+            thumbnail_url = get_signed_url(row["thumbnail_path"])
+
+        summaries.append(ProjectSummary(
+            id=row["id"],
+            name=row["name"],
+            filename=row["filename"],
+            solid_species=row["solid_species"],
+            sheet_type=row["sheet_type"],
+            part_count=total_parts,
+            unique_parts=unique_parts,
+            estimated_cost=estimated_cost,
+            thumbnail_url=thumbnail_url,
+            created_at=row["created_at"],
+            updated_at=row["updated_at"],
+        ))
+    return summaries
+
+
+@app.get("/api/projects/{project_id}")
+async def get_user_project(project_id: str, user: dict = Depends(require_user)):
+    row = get_project(project_id, user["id"])
+    if row is None:
+        raise HTTPException(status_code=404, detail="Project not found")
+
+    file_url = get_signed_url(row["file_path"]) or ""
+    thumbnail_url = None
+    if row.get("thumbnail_path"):
+        thumbnail_url = get_signed_url(row["thumbnail_path"])
+
+    analysis = AnalyzeResponse(**row["analysis_result"])
+
+    return ProjectDetail(
+        id=row["id"],
+        name=row["name"],
+        filename=row["filename"],
+        solid_species=row["solid_species"],
+        sheet_type=row["sheet_type"],
+        all_solid=row["all_solid"],
+        display_units=row["display_units"],
+        analysis_result=analysis,
+        file_url=file_url,
+        thumbnail_url=thumbnail_url,
+        created_at=row["created_at"],
+        updated_at=row["updated_at"],
+    )
+
+
+@app.delete("/api/projects/{project_id}", status_code=204)
+async def delete_user_project(project_id: str, user: dict = Depends(require_user)):
+    row = get_project(project_id, user["id"])
+    if row is None:
+        raise HTTPException(status_code=404, detail="Project not found")
+
+    paths_to_delete = [row["file_path"]]
+    if row.get("thumbnail_path"):
+        paths_to_delete.append(row["thumbnail_path"])
+    delete_files(paths_to_delete)
+
+    delete_project(project_id, user["id"])
