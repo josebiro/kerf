@@ -1,4 +1,4 @@
-import type { UploadResponse, AnalyzeRequest, AnalyzeResponse } from './types';
+import type { UploadResponse, AnalyzeRequest, AnalyzeResponse, ProjectSummary, ProjectDetail } from './types';
 import { get } from 'svelte/store';
 import { session } from './stores/auth';
 
@@ -80,4 +80,58 @@ export async function downloadReport(request: {
 	a.download = 'cut-list-report.pdf';
 	a.click();
 	URL.revokeObjectURL(url);
+}
+
+export async function saveProject(request: {
+	name: string;
+	filename: string;
+	session_id: string;
+	solid_species: string;
+	sheet_type: string;
+	all_solid?: boolean;
+	display_units?: string;
+	analysis_result: AnalyzeResponse;
+	thumbnail?: string | null;
+}): Promise<{ id: string }> {
+	const response = await fetch(`${BASE}/projects`, {
+		method: 'POST',
+		headers: { 'Content-Type': 'application/json', ...authHeaders() },
+		body: JSON.stringify(request),
+	});
+	if (!response.ok) {
+		if (response.status === 401) throw new Error('AUTH_REQUIRED');
+		const detail = await response.json().catch(() => ({ detail: 'Save failed' }));
+		throw new Error(detail.detail || 'Save failed');
+	}
+	return response.json();
+}
+
+export async function listProjects(): Promise<ProjectSummary[]> {
+	const response = await fetch(`${BASE}/projects`, { headers: authHeaders() });
+	if (!response.ok) {
+		if (response.status === 401) throw new Error('AUTH_REQUIRED');
+		throw new Error('Failed to load projects');
+	}
+	return response.json();
+}
+
+export async function getProjectDetail(id: string): Promise<ProjectDetail> {
+	const response = await fetch(`${BASE}/projects/${id}`, { headers: authHeaders() });
+	if (!response.ok) {
+		if (response.status === 401) throw new Error('AUTH_REQUIRED');
+		if (response.status === 404) throw new Error('Project not found');
+		throw new Error('Failed to load project');
+	}
+	return response.json();
+}
+
+export async function deleteProject(id: string): Promise<void> {
+	const response = await fetch(`${BASE}/projects/${id}`, {
+		method: 'DELETE',
+		headers: authHeaders(),
+	});
+	if (!response.ok) {
+		if (response.status === 401) throw new Error('AUTH_REQUIRED');
+		throw new Error('Failed to delete project');
+	}
 }

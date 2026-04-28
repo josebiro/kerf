@@ -6,8 +6,11 @@
 		onDownloadPdf?: () => void;
 		downloadingPdf?: boolean;
 		isAuthenticated?: boolean;
+		onSaveProject?: () => void;
+		savingProject?: boolean;
+		projectSaved?: boolean;
 	}
-	let { result, onDownloadPdf, downloadingPdf = false, isAuthenticated = false }: Props = $props();
+	let { result, onDownloadPdf, downloadingPdf = false, isAuthenticated = false, onSaveProject, savingProject = false, projectSaved = false }: Props = $props();
 	let activeTab = $state<'parts' | 'shopping' | 'cost'>('parts');
 
 	function formatDimensions(part: Part, units: DisplayUnits): string {
@@ -143,6 +146,20 @@
 	{/if}
 
 	<div class="flex gap-3 mt-6">
+		{#if onSaveProject && isAuthenticated}
+			<button
+				onclick={onSaveProject}
+				disabled={savingProject || projectSaved}
+				class="bg-green-600 text-white px-4 py-2 rounded text-sm hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed">
+				{#if projectSaved}
+					Saved
+				{:else if savingProject}
+					Saving...
+				{:else}
+					Save Project
+				{/if}
+			</button>
+		{/if}
 		{#if onDownloadPdf}
 			<button
 				onclick={onDownloadPdf}

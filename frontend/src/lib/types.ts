@@ -55,3 +55,32 @@ export interface AnalyzeResponse {
 	cost_estimate: CostEstimate;
 	display_units: DisplayUnits;
 }
+
+export interface ProjectSummary {
+	id: string;
+	name: string;
+	filename: string;
+	solid_species: string;
+	sheet_type: string;
+	part_count: number;
+	unique_parts: number;
+	estimated_cost: number | null;
+	thumbnail_url: string | null;
+	created_at: string;
+	updated_at: string;
+}
+
+export interface ProjectDetail {
+	id: string;
+	name: string;
+	filename: string;
+	solid_species: string;
+	sheet_type: string;
+	all_solid: boolean;
+	display_units: DisplayUnits;
+	analysis_result: AnalyzeResponse;
+	file_url: string;
+	thumbnail_url: string | null;
+	created_at: string;
+	updated_at: string;
+}

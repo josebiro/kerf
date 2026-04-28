@@ -1,11 +1,12 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
+	import { page } from '$app/state';
 	import Upload from '$lib/components/Upload.svelte';
 	import ModelViewer, { type ModelViewerApi } from '$lib/components/ModelViewer.svelte';
 	import Configure from '$lib/components/Configure.svelte';
 	import Results from '$lib/components/Results.svelte';
-	import { analyze, downloadReport } from '$lib/api';
+	import { analyze, downloadReport, saveProject, getProjectDetail } from '$lib/api';
 	import { isAuthenticated } from '$lib/stores/auth';
 	import type { UploadResponse, AnalyzeResponse, DisplayUnits } from '$lib/types';
 
@@ -13,6 +14,8 @@
 	let analyzeResult = $state<AnalyzeResponse | null>(null);
 	let analyzing = $state(false);
 	let downloadingPdf = $state(false);
+	let savingProject = $state(false);
+	let projectSaved = $state(false);
 	let error = $state('');
 	let status = $state('');
 	let modelApi = $state<ModelViewerApi>();
@@ -22,6 +25,7 @@
 		uploadResult = result;
 		analyzeResult = null;
 		error = '';
+		projectSaved = false;
 	}
 
 	async function handleAnalyze(config: { solid_species: string; sheet_type: string; all_solid: boolean; display_units: DisplayUnits; }) {
@@ -30,6 +34,7 @@
 		error = '';
 		status = 'Parsing model...';
 		lastConfig = config;
+		projectSaved = false;
 		try {
 			status = 'Analyzing geometry...';
 			const result = await analyze({ session_id: uploadResult.session_id, ...config });
@@ -45,13 +50,11 @@
 
 	async function handleDownloadPdf() {
 		if (!uploadResult || !lastConfig) return;
-
 		if (!$isAuthenticated) {
 			sessionStorage.setItem('pendingAction', 'downloadPdf');
 			goto(`/login?redirect=${encodeURIComponent('/')}`);
 			return;
 		}
-
 		downloadingPdf = true;
 		error = '';
 		try {
@@ -74,15 +77,71 @@
 		}
 	}
 
+	async function handleSaveProject() {
+		if (!uploadResult || !lastConfig || !analyzeResult) return;
+		if (!$isAuthenticated) {
+			goto(`/login?redirect=${encodeURIComponent('/')}`);
+			return;
+		}
+		savingProject = true;
+		error = '';
+		try {
+			const thumbnail = modelApi?.captureScreenshot() ?? null;
+			const name = uploadResult.file_url.split('/').pop()?.replace('.3mf', '') || 'Untitled';
+			await saveProject({
+				name,
+				filename: uploadResult.file_url.split('/').pop() || 'model.3mf',
+				session_id: uploadResult.session_id,
+				...lastConfig,
+				analysis_result: analyzeResult,
+				thumbnail,
+			});
+			projectSaved = true;
+		} catch (e) {
+			error = e instanceof Error ? e.message : 'Save failed';
+		} finally {
+			savingProject = false;
+		}
+	}
+
 	function reset() {
 		uploadResult = null;
 		analyzeResult = null;
 		error = '';
 		status = '';
 		lastConfig = null;
+		projectSaved = false;
+		if (page.url.searchParams.has('project')) {
+			goto('/', { replaceState: true });
+		}
 	}
 
-	onMount(() => {
+	onMount(async () => {
+		const projectId = page.url.searchParams.get('project');
+		if (projectId && $isAuthenticated) {
+			try {
+				status = 'Loading project...';
+				const project = await getProjectDetail(projectId);
+				analyzeResult = project.analysis_result;
+				lastConfig = {
+					solid_species: project.solid_species,
+					sheet_type: project.sheet_type,
+					all_solid: project.all_solid,
+					display_units: project.display_units,
+				};
+				uploadResult = {
+					session_id: '',
+					file_url: project.file_url,
+					parts_preview: project.analysis_result.parts.map(p => ({ name: p.name, vertex_count: 0 })),
+				};
+				projectSaved = true;
+				status = '';
+			} catch (e) {
+				error = e instanceof Error ? e.message : 'Failed to load project';
+				status = '';
+			}
+		}
+
 		const pending = sessionStorage.getItem('pendingAction');
 		if (pending === 'downloadPdf' && $isAuthenticated) {
 			sessionStorage.removeItem('pendingAction');
@@ -95,6 +154,9 @@
 		<div class="max-w-6xl mx-auto flex items-center justify-between">
 			<h1 class="text-xl font-semibold text-gray-800">Kerf</h1>
 			<div class="flex items-center gap-4">
+				{#if $isAuthenticated}
+					<a href="/projects" class="text-sm text-gray-500 hover:text-gray-700">My Projects</a>
+				{/if}
 				{#if uploadResult}
 					<button onclick={reset} class="text-sm text-gray-500 hover:text-gray-700">New Project</button>
 				{/if}
@@ -136,7 +198,7 @@
 							<span>{status}</span>
 						</div>
 					{:else if analyzeResult}
-						<Results result={analyzeResult} onDownloadPdf={handleDownloadPdf} {downloadingPdf} isAuthenticated={$isAuthenticated} />
+						<Results result={analyzeResult} onDownloadPdf={handleDownloadPdf} {downloadingPdf} isAuthenticated={$isAuthenticated} onSaveProject={handleSaveProject} {savingProject} {projectSaved} />
 					{:else}
 						<div class="text-center py-12 text-gray-400">
 							<p>Configure materials and click Analyze to see your cut list.</p>
