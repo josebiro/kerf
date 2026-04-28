@@ -87,13 +87,33 @@ def test_cost_estimate_total():
     assert estimate.total == pytest.approx(287.25)
 
 
-def test_cost_estimate_total_none_when_any_price_missing():
+def test_cost_estimate_partial_total_when_some_prices_missing():
     items = [
         ShoppingItem(material="4/4 Oak", thickness="4/4", quantity=18.5, unit="BF", unit_price=8.50),
         ShoppingItem(material="3/4 Ply", thickness="3/4\"", quantity=2, unit="sheets", unit_price=None),
     ]
     estimate = CostEstimate(items=items)
+    # Shows partial total from available prices
+    assert estimate.total == pytest.approx(157.25)
+    assert estimate.has_missing_prices is True
+
+
+def test_cost_estimate_total_none_when_all_prices_missing():
+    items = [
+        ShoppingItem(material="4/4 Oak", thickness="4/4", quantity=18.5, unit="BF", unit_price=None),
+        ShoppingItem(material="3/4 Ply", thickness="3/4\"", quantity=2, unit="sheets", unit_price=None),
+    ]
+    estimate = CostEstimate(items=items)
     assert estimate.total is None
+    assert estimate.has_missing_prices is True
+
+
+def test_cost_estimate_no_missing_prices():
+    items = [
+        ShoppingItem(material="4/4 Oak", thickness="4/4", quantity=18.5, unit="BF", unit_price=8.50),
+    ]
+    estimate = CostEstimate(items=items)
+    assert estimate.has_missing_prices is False
 
 
 def test_analyze_request_defaults():

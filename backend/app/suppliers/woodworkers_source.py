@@ -128,26 +128,42 @@ PLYWOOD_PAGES: dict[str, str] = {
 CACHE_TTL = 86400  # 24 hours in seconds
 CACHE_FILENAME = "woodworkers_source_catalog.json"
 
-# Pattern to strip thickness tokens and trailing keywords from product names
-_THICKNESS_RE = re.compile(
-    r"""
-    \s*
-    (?:
-        \d+/\d+         # fraction like 4/4, 8/4
-        |
-        \d+(?:\.\d+)?"  # decimal with inch mark like 3/4", 1/2"
-    )
-    """,
-    re.VERBOSE,
+# Patterns for cleaning product names into species display names
+_PLYWOOD_NAME_RE = re.compile(
+    r'^[\d/]+"?\s*(?:\([^)]*\)\s*)?'  # leading thickness like '3/4" (18mm) '
 )
-_SUFFIX_RE = re.compile(r"\b(Lumber|Plywood|Board|Sheet)\b.*$", re.IGNORECASE)
+_LUMBER_THICKNESS_RE = re.compile(r'\s*\d+/\d+\s*')  # ' 4/4 ', ' 8/4 '
+_SUFFIX_RE = re.compile(
+    r'\b(Lumber|Plywood|on\s+\w+\s+Core|Full\s+Size|Store\s+Pickup|Board|Sheet)\b.*$',
+    re.IGNORECASE,
+)
+_CLEANUP_RE = re.compile(r'[—–\-]+\s*$')
 
 
-def _extract_species(name: str) -> str:
-    """Strip thickness and common suffixes to get a species display name."""
-    s = _SUFFIX_RE.sub("", name)
-    s = _THICKNESS_RE.sub("", s)
-    return s.strip()
+def _extract_species(name: str, category: str = "solid") -> str:
+    """Extract a clean species display name from a product name.
+
+    Lumber:  "Red Oak 4/4 Lumber"           → "Red Oak"
+    Plywood: "3/4\" (18mm) Premium Walnut Plywood on Combi Core..." → "Premium Walnut Ply"
+    """
+    s = name
+    if category == "sheet":
+        # Strip leading thickness + metric: '3/4" (18mm) '
+        s = _PLYWOOD_NAME_RE.sub("", s)
+    else:
+        # Strip thickness like ' 4/4 '
+        s = _LUMBER_THICKNESS_RE.sub(" ", s)
+
+    # Strip trailing suffixes
+    s = _SUFFIX_RE.sub("", s)
+    s = _CLEANUP_RE.sub("", s)
+    s = s.strip()
+
+    # Add "Ply" suffix for sheet goods so "Premium Walnut" lumber vs ply are distinct
+    if category == "sheet" and s and not s.endswith("Ply"):
+        s += " Ply"
+
+    return s
 
 
 class WoodworkersSourceSupplier(SupplierBase):
@@ -316,14 +332,20 @@ class WoodworkersSourceSupplier(SupplierBase):
             if price is None or price <= 0:
                 continue
 
-            species = _extract_species(name)
             category = "solid" if unit == "BF" else "sheet"
+            species = _extract_species(name, category)
+
+            # Normalize sheet thickness to include inch mark (e.g., "3/4" → '3/4"')
+            # so it matches the material mapper's key format
+            thick = thickness or ""
+            if category == "sheet" and thick and not thick.endswith('"'):
+                thick = thick + '"'
 
             products.append(
                 Product(
                     name=name,
                     species=species,
-                    thickness=thickness or "",
+                    thickness=thick,
                     price_per_unit=price,
                     unit=unit,
                     category=category,

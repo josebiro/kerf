@@ -132,8 +132,8 @@
 				</tr></tfoot>
 			</table>
 		</div>
-		{#if result.cost_estimate.total === null}
-			<p class="mt-2 text-sm text-amber-600">Some prices are unavailable. Total cannot be calculated.</p>
+		{#if result.cost_estimate.has_missing_prices}
+			<p class="mt-2 text-sm text-amber-600">Some prices are unavailable. Total is a partial estimate.</p>
 		{/if}
 	{/if}
 

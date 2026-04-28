@@ -52,10 +52,17 @@ class CostEstimate(BaseModel):
     @computed_field
     @property
     def total(self) -> float | None:
-        subtotals = [item.subtotal for item in self.items]
-        if any(s is None for s in subtotals):
+        """Sum of available subtotals. None only if ALL prices are missing."""
+        subtotals = [item.subtotal for item in self.items if item.subtotal is not None]
+        if not subtotals:
             return None
         return sum(subtotals)
+
+    @computed_field
+    @property
+    def has_missing_prices(self) -> bool:
+        """True if any item is missing pricing."""
+        return any(item.subtotal is None for item in self.items)
 
 
 class AnalyzeRequest(BaseModel):

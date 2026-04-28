@@ -38,6 +38,7 @@ export interface ShoppingItem {
 export interface CostEstimate {
 	items: ShoppingItem[];
 	total: number | null;
+	has_missing_prices: boolean;
 }
 
 export interface AnalyzeRequest {
