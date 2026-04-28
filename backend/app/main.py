@@ -4,6 +4,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, Response
 from app.models import (AnalyzeRequest, AnalyzeResponse, CostEstimate, Part, PartPreview, ShoppingItem, UploadResponse, ReportRequest)
 from app.models import ProjectCreate, ProjectSummary, ProjectDetail
+from app.models import OptimizeRequest, OptimizeResponse
+from app.optimizer.optimize import run_optimization
 from app.parser.threemf import parse_3mf
 from app.analyzer.geometry import compute_dimensions, classify_board_type
 from app.mapper.materials import map_part_to_stock, aggregate_shopping_list
@@ -295,3 +297,15 @@ async def delete_user_project(project_id: str, user: dict = Depends(require_user
     delete_files(paths_to_delete)
 
     delete_project(project_id, user["id"])
+
+
+@app.post("/api/optimize", response_model=OptimizeResponse)
+async def optimize_cuts(request: OptimizeRequest):
+    return run_optimization(
+        parts=request.parts,
+        shopping_list=request.shopping_list,
+        solid_species=request.solid_species,
+        sheet_type=request.sheet_type,
+        buffer_config=request.buffer_config,
+        board_sizes=request.board_sizes,
+    )
