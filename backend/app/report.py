@@ -6,7 +6,7 @@ from pathlib import Path
 from jinja2 import Environment, FileSystemLoader
 from weasyprint import HTML
 
-from app.models import AnalyzeResponse
+from app.models import AnalyzeResponse, OptimizeResponse
 
 _TEMPLATE_DIR = Path(__file__).parent / "templates"
 _env = Environment(loader=FileSystemLoader(str(_TEMPLATE_DIR)), autoescape=True)
@@ -39,6 +39,7 @@ def generate_report_pdf(
     solid_species: str,
     sheet_type: str,
     thumbnail_data_url: str | None = None,
+    optimize_result: "OptimizeResponse | None" = None,
 ) -> bytes:
     """Render the report template and convert to PDF bytes."""
     template = _env.get_template("report.html")
@@ -53,5 +54,6 @@ def generate_report_pdf(
         parts=response.parts,
         shopping_list=response.shopping_list,
         cost_estimate=response.cost_estimate,
+        optimize_result=optimize_result,
     )
     return HTML(string=html_string).write_pdf()

@@ -169,11 +169,24 @@ async def download_report(request: ReportRequest, user: dict = Depends(require_u
         cost_estimate=cost_estimate, display_units=request.display_units,
     )
 
+    # Run optimizer for PDF
+    from app.optimizer.optimize import run_optimization as _run_optimization
+    try:
+        opt_result = _run_optimization(
+            parts=parts,
+            shopping_list=shopping_list,
+            solid_species=request.solid_species,
+            sheet_type=request.sheet_type,
+        )
+    except Exception:
+        opt_result = None
+
     filename = threemf_files[0].name
     pdf_bytes = generate_report_pdf(
         analyze_response, filename,
         request.solid_species, request.sheet_type,
         thumbnail_data_url=request.thumbnail,
+        optimize_result=opt_result,
     )
 
     return Response(
