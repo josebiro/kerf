@@ -1,1 +1,28 @@
 @import 'tailwindcss';
+
+@import url('https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=Inter:wght@400;500;600;700&display=swap');
+
+:root {
+  --color-primary: #78552B;
+  --color-primary-hover: #5E4321;
+  --color-accent: #1B6B4A;
+  --color-accent-hover: #155A3D;
+  --color-bg: #FAFAF7;
+  --color-surface: #FFFFFF;
+  --color-surface-muted: #F5F0E8;
+  --color-foreground: #2C2418;
+  --color-foreground-muted: #6B5D4F;
+  --color-border: #E8E0D4;
+  --color-border-strong: #D4C9B8;
+  --color-destructive: #C53030;
+}
+
+body {
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  color: var(--color-foreground);
+  background: var(--color-bg);
+}
+
+h1, h2, h3 {
+  font-family: 'DM Serif Display', Georgia, serif;
+}

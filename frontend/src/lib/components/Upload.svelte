@@ -54,8 +54,8 @@
 </script>
 
 <div
-	class="border-2 border-dashed rounded-lg p-12 text-center transition-colors cursor-pointer
-		{dragOver ? 'border-blue-500 bg-blue-50' : 'border-gray-300 hover:border-gray-400'}"
+	class="border-2 border-dashed rounded-lg p-12 text-center transition-colors duration-150 cursor-pointer
+		{dragOver ? 'border-[var(--color-accent)] bg-[var(--color-surface-muted)]' : 'border-[var(--color-border-strong)] hover:border-[var(--color-border-strong)]'}"
 	role="button"
 	tabindex="0"
 	ondrop={handleDrop}
@@ -65,14 +65,14 @@
 	onkeydown={(e) => { if (e.key === 'Enter' || e.key === ' ') document.getElementById('file-input')?.click(); }}
 >
 	{#if uploading}
-		<p class="text-gray-500">Uploading...</p>
+		<p class="text-[var(--color-foreground-muted)]">Uploading...</p>
 	{:else}
-		<p class="text-lg text-gray-600 mb-2">Drop .3mf file here</p>
-		<p class="text-sm text-gray-400">or click to browse</p>
+		<p class="text-lg text-[var(--color-foreground-muted)] mb-2">Drop .3mf file here</p>
+		<p class="text-sm text-[var(--color-foreground-muted)] opacity-60">or click to browse</p>
 	{/if}
 	<input id="file-input" type="file" accept=".3mf" class="hidden" onchange={handleInputChange} />
 </div>
 
 {#if error}
-	<p class="mt-4 text-red-600 text-sm">{error}</p>
+	<p class="mt-4 text-[var(--color-destructive)] text-sm">{error}</p>
 {/if}

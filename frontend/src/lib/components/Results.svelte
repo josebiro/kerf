@@ -55,30 +55,30 @@
 </script>
 
 <div>
-	<div class="flex gap-2 mb-4">
-		<button class="px-4 py-2 text-sm rounded-t {activeTab === 'parts' ? 'bg-white border border-b-0 border-gray-300 font-medium' : 'bg-gray-100 text-gray-500'}" onclick={() => (activeTab = 'parts')}>Parts List</button>
-		<button class="px-4 py-2 text-sm rounded-t {activeTab === 'shopping' ? 'bg-white border border-b-0 border-gray-300 font-medium' : 'bg-gray-100 text-gray-500'}" onclick={() => (activeTab = 'shopping')}>Shopping List</button>
-		<button class="px-4 py-2 text-sm rounded-t {activeTab === 'cost' ? 'bg-white border border-b-0 border-gray-300 font-medium' : 'bg-gray-100 text-gray-500'}" onclick={() => (activeTab = 'cost')}>Cost Estimate</button>
+	<div class="flex gap-1 mb-4 border-b border-[var(--color-border)]">
+		<button class="px-4 py-2 text-sm transition-colors duration-150 {activeTab === 'parts' ? 'border-b-2 border-[var(--color-primary)] text-[var(--color-primary)] font-medium' : 'text-[var(--color-foreground-muted)] hover:text-[var(--color-foreground)]'}" onclick={() => (activeTab = 'parts')}>Parts List</button>
+		<button class="px-4 py-2 text-sm transition-colors duration-150 {activeTab === 'shopping' ? 'border-b-2 border-[var(--color-primary)] text-[var(--color-primary)] font-medium' : 'text-[var(--color-foreground-muted)] hover:text-[var(--color-foreground)]'}" onclick={() => (activeTab = 'shopping')}>Shopping List</button>
+		<button class="px-4 py-2 text-sm transition-colors duration-150 {activeTab === 'cost' ? 'border-b-2 border-[var(--color-primary)] text-[var(--color-primary)] font-medium' : 'text-[var(--color-foreground-muted)] hover:text-[var(--color-foreground)]'}" onclick={() => (activeTab = 'cost')}>Cost Estimate</button>
 		{#if optimizeResult}
-			<button class="px-4 py-2 text-sm rounded-t {activeTab === 'cutlayout' ? 'bg-white border border-b-0 border-gray-300 font-medium' : 'bg-gray-100 text-gray-500'}" onclick={() => (activeTab = 'cutlayout')}>Cut Layout</button>
+			<button class="px-4 py-2 text-sm transition-colors duration-150 {activeTab === 'cutlayout' ? 'border-b-2 border-[var(--color-primary)] text-[var(--color-primary)] font-medium' : 'text-[var(--color-foreground-muted)] hover:text-[var(--color-foreground)]'}" onclick={() => (activeTab = 'cutlayout')}>Cut Layout</button>
 		{/if}
 	</div>
 
 	{#if activeTab === 'parts'}
 		<div class="overflow-x-auto">
 			<table class="w-full text-sm">
-				<thead><tr class="border-b border-gray-300 text-left text-gray-600">
+				<thead><tr class="border-b border-[var(--color-border)] text-left text-[var(--color-foreground-muted)]">
 					<th class="py-2 pr-4">Part</th><th class="py-2 pr-4">Qty</th><th class="py-2 pr-4">Dimensions</th><th class="py-2 pr-4">Type</th><th class="py-2 pr-4">Stock</th><th class="py-2">Notes</th>
 				</tr></thead>
 				<tbody>
 					{#each result.parts as part}
-						<tr class="border-b border-gray-100">
+						<tr class="border-b border-[var(--color-border)]">
 							<td class="py-2 pr-4">{part.name}</td>
 							<td class="py-2 pr-4">{part.quantity}</td>
 							<td class="py-2 pr-4 font-mono text-xs">{formatDimensions(part, result.display_units)}</td>
-							<td class="py-2 pr-4"><span class="px-2 py-0.5 rounded text-xs {part.board_type === 'solid' ? 'bg-green-100 text-green-700' : part.board_type === 'sheet' ? 'bg-yellow-100 text-yellow-700' : 'bg-purple-100 text-purple-700'}">{part.board_type}</span></td>
+							<td class="py-2 pr-4"><span class="px-2 py-0.5 rounded text-xs {part.board_type === 'solid' ? 'bg-emerald-50 text-[#1B6B4A]' : part.board_type === 'sheet' ? 'bg-amber-50 text-[#A16207]' : 'bg-purple-50 text-[#6B21A8]'}">{part.board_type}</span></td>
 							<td class="py-2 pr-4">{part.stock}</td>
-							<td class="py-2 text-gray-500 text-xs">{part.notes || '—'}</td>
+							<td class="py-2 text-[var(--color-foreground-muted)] text-xs">{part.notes || '—'}</td>
 						</tr>
 					{/each}
 				</tbody>
@@ -89,28 +89,28 @@
 	{#if activeTab === 'shopping'}
 		<div class="space-y-4">
 			{#each (optimizeResult?.updated_shopping_list ?? result.shopping_list) as item}
-				<div class="border border-gray-200 rounded-lg p-4">
+				<div class="border border-[var(--color-border)] rounded-lg p-4">
 					<div class="flex justify-between items-start mb-2">
 						<div>
-							<h4 class="font-medium text-gray-800">
+							<h4 class="font-medium text-[var(--color-foreground)]">
 							{item.material}
 							{#if item.url}
 								<a href={item.url} target="_blank" rel="noopener noreferrer"
-									class="ml-2 text-xs text-blue-600 hover:text-blue-800 font-normal">
+									class="ml-2 text-xs text-[var(--color-accent)] hover:text-[var(--color-accent-hover)] font-normal transition-colors duration-150">
 									View on Woodworkers Source ↗
 								</a>
 							{/if}
 						</h4>
-							<p class="text-sm text-gray-500">{item.description}</p>
+							<p class="text-sm text-[var(--color-foreground-muted)]">{item.description}</p>
 						</div>
-						<span class="text-sm font-mono bg-gray-100 px-2 py-1 rounded">{item.quantity} {item.unit}</span>
+						<span class="text-sm font-mono bg-[var(--color-surface-muted)] px-2 py-1 rounded">{item.quantity} {item.unit}</span>
 					</div>
 					{#if item.cut_pieces.length > 0}
 						<div class="mt-2">
-							<p class="text-xs text-gray-500 uppercase tracking-wide mb-1">Cut pieces</p>
+							<p class="text-xs text-[var(--color-foreground-muted)] uppercase tracking-wide mb-1">Cut pieces</p>
 							<div class="flex flex-wrap gap-2">
 								{#each item.cut_pieces as piece}
-									<span class="text-xs font-mono bg-gray-50 border border-gray-200 px-2 py-1 rounded">{piece}</span>
+									<span class="text-xs font-mono bg-[var(--color-surface-muted)] border border-[var(--color-border)] px-2 py-1 rounded">{piece}</span>
 								{/each}
 							</div>
 						</div>
@@ -123,16 +123,16 @@
 	{#if activeTab === 'cost'}
 		<div class="overflow-x-auto">
 			<table class="w-full text-sm">
-				<thead><tr class="border-b border-gray-300 text-left text-gray-600">
+				<thead><tr class="border-b border-[var(--color-border)] text-left text-[var(--color-foreground-muted)]">
 					<th class="py-2 pr-4">Material</th><th class="py-2 pr-4">Qty</th><th class="py-2 pr-4">Unit Price</th><th class="py-2">Subtotal</th>
 				</tr></thead>
 				<tbody>
 					{#each result.cost_estimate.items as item}
-						<tr class="border-b border-gray-100">
+						<tr class="border-b border-[var(--color-border)]">
 							<td class="py-2 pr-4">
 								{#if item.url}
 									<a href={item.url} target="_blank" rel="noopener noreferrer"
-										class="text-blue-600 hover:text-blue-800 hover:underline">
+										class="text-[var(--color-accent)] hover:text-[var(--color-accent-hover)] hover:underline transition-colors duration-150">
 										{item.material} ↗
 									</a>
 								{:else}
@@ -142,7 +142,7 @@
 						</tr>
 					{/each}
 				</tbody>
-				<tfoot><tr class="border-t-2 border-gray-300 font-medium">
+				<tfoot><tr class="border-t-2 border-[var(--color-border-strong)] font-medium">
 					<td colspan="3" class="py-2 text-right pr-4">Estimated Total:</td><td class="py-2">{formatPrice(result.cost_estimate.total)}</td>
 				</tr></tfoot>
 			</table>
@@ -161,7 +161,7 @@
 			<button
 				onclick={onSaveProject}
 				disabled={savingProject || projectSaved}
-				class="bg-green-600 text-white px-4 py-2 rounded text-sm hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed">
+				class="bg-[var(--color-primary)] text-white px-4 py-2 rounded text-sm hover:bg-[var(--color-primary-hover)] disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-150">
 				{#if projectSaved}
 					Saved
 				{:else if savingProject}
@@ -175,7 +175,7 @@
 			<button
 				onclick={onDownloadPdf}
 				disabled={downloadingPdf}
-				class="bg-blue-600 text-white px-4 py-2 rounded text-sm hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed">
+				class="bg-[var(--color-accent)] text-white px-4 py-2 rounded text-sm hover:bg-[var(--color-accent-hover)] disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-150">
 				{#if downloadingPdf}
 					Generating PDF...
 				{:else if !isAuthenticated}
@@ -185,7 +185,7 @@
 				{/if}
 			</button>
 		{/if}
-		<button onclick={exportCsv} class="bg-gray-800 text-white px-4 py-2 rounded text-sm hover:bg-gray-900">Export CSV</button>
-		<button onclick={() => window.print()} class="bg-gray-200 text-gray-700 px-4 py-2 rounded text-sm hover:bg-gray-300">Print</button>
+		<button onclick={exportCsv} class="bg-[var(--color-foreground)] text-white px-4 py-2 rounded text-sm hover:opacity-90 transition-colors duration-150">Export CSV</button>
+		<button onclick={() => window.print()} class="bg-[var(--color-surface-muted)] text-[var(--color-foreground)] px-4 py-2 rounded text-sm hover:opacity-80 transition-colors duration-150">Print</button>
 	</div>
 </div>

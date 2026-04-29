@@ -199,21 +199,21 @@
 	});
 </script>
 
-<div class="min-h-screen bg-gray-50">
-	<header class="bg-white border-b border-gray-200 px-6 py-4">
+<div class="min-h-screen bg-[var(--color-bg)]">
+	<header class="bg-[var(--color-surface)] border-b border-[var(--color-border)] px-6 py-4">
 		<div class="max-w-6xl mx-auto flex items-center justify-between">
-			<h1 class="text-xl font-semibold text-gray-800">Kerf</h1>
+			<h1 class="text-xl text-[var(--color-primary)] font-['DM_Serif_Display',serif]">Kerf</h1>
 			<div class="flex items-center gap-4">
 				{#if $isAuthenticated}
-					<a href="/projects" class="text-sm text-gray-500 hover:text-gray-700">My Projects</a>
+					<a href="/projects" class="text-sm text-[var(--color-foreground-muted)] hover:text-[var(--color-foreground)] transition-colors duration-150">My Projects</a>
 				{/if}
 				{#if uploadResult}
-					<button onclick={reset} class="text-sm text-gray-500 hover:text-gray-700">New Project</button>
+					<button onclick={reset} class="text-sm text-[var(--color-foreground-muted)] hover:text-[var(--color-foreground)] transition-colors duration-150">New Project</button>
 				{/if}
 				{#if $isAuthenticated}
-					<button onclick={() => { import('$lib/supabase').then(m => m.supabase.auth.signOut()); }} class="text-sm text-gray-500 hover:text-gray-700">Sign Out</button>
+					<button onclick={() => { import('$lib/supabase').then(m => m.supabase.auth.signOut()); }} class="text-sm text-[var(--color-foreground-muted)] hover:text-[var(--color-foreground)] transition-colors duration-150">Sign Out</button>
 				{:else}
-					<a href="/login" class="text-sm text-blue-600 hover:text-blue-800">Sign In</a>
+					<a href="/login" class="text-sm text-[var(--color-accent)] hover:text-[var(--color-accent-hover)] transition-colors duration-150">Sign In</a>
 				{/if}
 			</div>
 		</div>
@@ -222,25 +222,25 @@
 	<main class="max-w-6xl mx-auto px-6 py-8">
 		{#if !uploadResult}
 			<div class="max-w-lg mx-auto">
-				<h2 class="text-lg font-medium text-gray-700 mb-4">Upload a 3MF File</h2>
+				<h2 class="text-lg font-medium text-[var(--color-foreground)] mb-4">Upload a 3MF File</h2>
 				<Upload onUpload={handleUpload} />
 			</div>
 		{:else}
 			<div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
 				<div class="lg:col-span-1 space-y-6">
 					<div>
-						<h3 class="text-sm font-medium text-gray-600 mb-2">Model Preview</h3>
+						<h3 class="text-sm font-medium text-[var(--color-foreground-muted)] mb-2">Model Preview</h3>
 						<ModelViewer fileUrl={uploadResult.file_url} bind:api={modelApi} />
-						<p class="text-xs text-gray-400 mt-1">{uploadResult.parts_preview.length} part{uploadResult.parts_preview.length !== 1 ? 's' : ''} detected</p>
+						<p class="text-xs text-[var(--color-foreground-muted)] opacity-60 mt-1">{uploadResult.parts_preview.length} part{uploadResult.parts_preview.length !== 1 ? 's' : ''} detected</p>
 					</div>
 					<div>
-						<h3 class="text-sm font-medium text-gray-600 mb-2">Material Settings</h3>
+						<h3 class="text-sm font-medium text-[var(--color-foreground-muted)] mb-2">Material Settings</h3>
 						<Configure onAnalyze={handleAnalyze} {analyzing} initialConfig={lastConfig} />
 					</div>
 				</div>
 				<div class="lg:col-span-2">
 					{#if status}
-						<div class="flex items-center gap-3 py-12 justify-center text-gray-500">
+						<div class="flex items-center gap-3 py-12 justify-center text-[var(--color-foreground-muted)]">
 							<svg class="animate-spin h-5 w-5" viewBox="0 0 24 24">
 								<circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" fill="none" class="opacity-25" />
 								<path fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" class="opacity-75" />
@@ -250,12 +250,12 @@
 					{:else if analyzeResult}
 						<Results result={analyzeResult} onDownloadPdf={handleDownloadPdf} {downloadingPdf} isAuthenticated={$isAuthenticated} onSaveProject={handleSaveProject} {savingProject} {projectSaved} {optimizeResult} onReoptimize={handleReoptimize} {optimizing} />
 					{:else}
-						<div class="text-center py-12 text-gray-400">
+						<div class="text-center py-12 text-[var(--color-foreground-muted)]">
 							<p>Configure materials and click Analyze to see your cut list.</p>
 						</div>
 					{/if}
 					{#if error}
-						<div class="mt-4 p-3 bg-red-50 border border-red-200 rounded text-sm text-red-700">{error}</div>
+						<div class="mt-4 p-3 bg-red-50 border border-red-200 rounded text-sm text-[var(--color-destructive)]">{error}</div>
 					{/if}
 				</div>
 			</div>

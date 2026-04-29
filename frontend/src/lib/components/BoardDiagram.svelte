@@ -22,12 +22,12 @@
 
 <div class="mb-4">
 	<div class="flex justify-between items-center mb-1">
-		<span class="text-sm font-medium text-gray-700">{layout.material} — {layout.length}" × {layout.width}"</span>
-		<span class="text-xs text-green-600 font-medium">Waste: {layout.waste_percent}%</span>
+		<span class="text-sm font-medium text-[var(--color-foreground)]">{layout.material} — {layout.length}" × {layout.width}"</span>
+		<span class="text-xs text-[var(--color-accent)] font-medium">Waste: {layout.waste_percent}%</span>
 	</div>
 	<svg
 		viewBox="0 0 {svgWidth} {svgHeight}"
-		class="w-full border border-gray-300 rounded bg-gray-100"
+		class="w-full border border-[var(--color-border)] rounded bg-[var(--color-surface-muted)]"
 		style="max-height: 60px;"
 	>
 		<rect x="0" y="0" width={svgWidth} height={svgHeight} fill="#e5e7eb" />
