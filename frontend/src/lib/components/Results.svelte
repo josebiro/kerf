@@ -1,5 +1,5 @@
 <script lang="ts">
-	import type { AnalyzeResponse, Part, DisplayUnits, OptimizeResponse, BufferConfig, BoardSizeConfig } from '$lib/types';
+	import type { AnalyzeResponse, Part, DisplayUnits, OptimizeResponse, BufferConfig, BoardSizeConfig, SheetSizeConfig } from '$lib/types';
 	import CutLayout from './CutLayout.svelte';
 
 	interface Props {
@@ -11,7 +11,7 @@
 		savingProject?: boolean;
 		projectSaved?: boolean;
 		optimizeResult?: OptimizeResponse | null;
-		onReoptimize?: (config: BufferConfig, sizes: Record<string, BoardSizeConfig>) => void;
+		onReoptimize?: (config: BufferConfig, sizes: Record<string, BoardSizeConfig>, sheetSize?: SheetSizeConfig) => void;
 		optimizing?: boolean;
 	}
 	let { result, onDownloadPdf, downloadingPdf = false, isAuthenticated = false, onSaveProject, savingProject = false, projectSaved = false, optimizeResult = null, onReoptimize, optimizing = false }: Props = $props();

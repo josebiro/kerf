@@ -399,4 +399,5 @@ async def optimize_cuts(request: OptimizeRequest):
         sheet_type=request.sheet_type,
         buffer_config=request.buffer_config,
         board_sizes=request.board_sizes,
+        sheet_size=request.sheet_size,
     )

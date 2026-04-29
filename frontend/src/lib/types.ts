@@ -132,6 +132,12 @@ export interface OptimizeSummary {
 	total_spare_parts: number;
 }
 
+export interface SheetSizeConfig {
+	width: number;
+	length: number;
+	label: string;
+}
+
 export interface OptimizeRequest {
 	parts: Part[];
 	shopping_list: ShoppingItem[];
@@ -139,6 +145,7 @@ export interface OptimizeRequest {
 	sheet_type: string;
 	buffer_config?: BufferConfig;
 	board_sizes?: Record<string, BoardSizeConfig>;
+	sheet_size?: SheetSizeConfig;
 }
 
 export interface OptimizeResponse {

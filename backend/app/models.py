@@ -192,6 +192,12 @@ class OptimizeSummary(BaseModel):
     total_spare_parts: int
 
 
+class SheetSizeConfig(BaseModel):
+    width: float = 48.0   # inches
+    length: float = 96.0  # inches
+    label: str = "4' × 8' (full)"
+
+
 class OptimizeRequest(BaseModel):
     parts: list[Part]
     shopping_list: list[ShoppingItem]
@@ -199,6 +205,7 @@ class OptimizeRequest(BaseModel):
     sheet_type: str
     buffer_config: BufferConfig = BufferConfig()
     board_sizes: dict[str, BoardSizeConfig] = {}
+    sheet_size: SheetSizeConfig = SheetSizeConfig()
 
 
 class OptimizeResponse(BaseModel):

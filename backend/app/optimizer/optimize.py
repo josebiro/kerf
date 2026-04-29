@@ -2,7 +2,7 @@
 
 from app.models import (
     Part, ShoppingItem, BoardType, BufferConfig, BoardSizeConfig,
-    OptimizeResponse, OptimizeSummary,
+    SheetSizeConfig, OptimizeResponse, OptimizeSummary,
 )
 from app.optimizer.buffer import apply_spare_parts, apply_percentage_buffer
 from app.optimizer.sheet_packer import pack_sheets, PackingPiece
@@ -43,9 +43,11 @@ def run_optimization(
     sheet_type: str,
     buffer_config: BufferConfig = BufferConfig(),
     board_sizes: dict[str, BoardSizeConfig] | None = None,
+    sheet_size: SheetSizeConfig | None = None,
 ) -> OptimizeResponse:
     """Run the full cut optimization pipeline."""
     sizes = {**DEFAULT_BOARD_SIZES, **(board_sizes or {})}
+    s_size = sheet_size or SheetSizeConfig()
 
     sheet_parts = [p for p in parts if p.board_type == BoardType.SHEET]
     lumber_parts = [p for p in parts if p.board_type in (BoardType.SOLID, BoardType.THICK_STOCK)]
@@ -78,7 +80,7 @@ def run_optimization(
         )
         for p in sheet_with_buffer
     ]
-    sheet_layouts = pack_sheets(sheet_pieces, SHEET_WIDTH, SHEET_LENGTH, KERF, material=sheet_type)
+    sheet_layouts = pack_sheets(sheet_pieces, s_size.width, s_size.length, KERF, material=sheet_type)
 
     # Pack lumber by thickness group
     board_layouts = []

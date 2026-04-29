@@ -8,7 +8,7 @@
 	import Results from '$lib/components/Results.svelte';
 	import { analyze, downloadReport, saveProject, getProjectDetail, optimizeCuts, restoreSession } from '$lib/api';
 	import { isAuthenticated } from '$lib/stores/auth';
-	import type { UploadResponse, AnalyzeResponse, DisplayUnits, OptimizeResponse, BufferConfig, BoardSizeConfig } from '$lib/types';
+	import type { UploadResponse, AnalyzeResponse, DisplayUnits, OptimizeResponse, BufferConfig, BoardSizeConfig, SheetSizeConfig } from '$lib/types';
 
 	let uploadResult = $state<UploadResponse | null>(null);
 	let analyzeResult = $state<AnalyzeResponse | null>(null);
@@ -128,7 +128,7 @@
 		}
 	}
 
-	async function handleReoptimize(bufferConfig: BufferConfig, boardSizes: Record<string, BoardSizeConfig>) {
+	async function handleReoptimize(bufferConfig: BufferConfig, boardSizes: Record<string, BoardSizeConfig>, sheetSize?: SheetSizeConfig) {
 		if (!analyzeResult || !lastConfig) return;
 		optimizing = true;
 		try {
@@ -139,6 +139,7 @@
 				sheet_type: lastConfig.sheet_type,
 				buffer_config: bufferConfig,
 				board_sizes: boardSizes,
+				sheet_size: sheetSize,
 			});
 		} catch (e) {
 			error = e instanceof Error ? e.message : 'Optimization failed';
