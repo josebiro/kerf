@@ -6,7 +6,7 @@
 	import ModelViewer, { type ModelViewerApi } from '$lib/components/ModelViewer.svelte';
 	import Configure from '$lib/components/Configure.svelte';
 	import Results from '$lib/components/Results.svelte';
-	import { analyze, downloadReport, saveProject, getProjectDetail, optimizeCuts } from '$lib/api';
+	import { analyze, downloadReport, saveProject, getProjectDetail, optimizeCuts, restoreSession } from '$lib/api';
 	import { isAuthenticated } from '$lib/stores/auth';
 	import type { UploadResponse, AnalyzeResponse, DisplayUnits, OptimizeResponse, BufferConfig, BoardSizeConfig } from '$lib/types';
 
@@ -169,11 +169,12 @@
 					all_solid: project.all_solid,
 					display_units: project.display_units,
 				};
-				uploadResult = {
-					session_id: '',
-					file_url: project.file_url,
-					parts_preview: project.analysis_result.parts.map(p => ({ name: p.name, vertex_count: 0 })),
-				};
+
+				// Restore a local session so analyze/report endpoints work
+				status = 'Restoring session...';
+				const restored = await restoreSession(project.file_url, project.filename);
+				uploadResult = restored;
+
 				projectSaved = true;
 				status = '';
 			} catch (e) {

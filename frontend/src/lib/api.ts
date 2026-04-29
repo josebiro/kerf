@@ -13,6 +13,19 @@ function authHeaders(): Record<string, string> {
 	return headers;
 }
 
+export async function restoreSession(fileUrl: string, filename: string): Promise<UploadResponse> {
+	const response = await fetch(`${BASE}/restore-session`, {
+		method: 'POST',
+		headers: { 'Content-Type': 'application/json', ...authHeaders() },
+		body: JSON.stringify({ file_url: fileUrl, filename }),
+	});
+	if (!response.ok) {
+		const detail = await response.json().catch(() => ({ detail: 'Failed to restore session' }));
+		throw new Error(detail.detail || 'Failed to restore session');
+	}
+	return response.json();
+}
+
 export async function uploadFile(file: File): Promise<UploadResponse> {
 	const formData = new FormData();
 	formData.append('file', file);

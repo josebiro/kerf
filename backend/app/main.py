@@ -18,6 +18,13 @@ from app.storage import upload_file as storage_upload, get_signed_url, delete_fi
 from app.database import create_project, list_projects, get_project, delete_project
 import base64
 import uuid
+import requests as http_requests
+from pydantic import BaseModel as _BaseModel
+
+
+class RestoreSessionRequest(_BaseModel):
+    file_url: str
+    filename: str = "model.3mf"
 
 app = FastAPI(title="Cut List Generator API")
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
@@ -41,6 +48,35 @@ async def upload_file(file: UploadFile = File(...)):
         raise HTTPException(status_code=400, detail=str(e))
     previews = [PartPreview(name=body.name, vertex_count=body.vertices.shape[0]) for body in result.bodies]
     return UploadResponse(session_id=session_id, file_url=f"/api/files/{session_id}/{file.filename}", parts_preview=previews)
+
+
+@app.post("/api/restore-session", response_model=UploadResponse)
+async def restore_session(request: RestoreSessionRequest):
+    """Download a 3MF file from a URL into a fresh local session.
+
+    Used when loading a saved project — the 3MF is in Supabase Storage
+    but we need a local session for analyze/report endpoints.
+    """
+    try:
+        resp = http_requests.get(request.file_url, timeout=30)
+        resp.raise_for_status()
+        content = resp.content
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Failed to download file: {e}")
+
+    session_id = create_session()
+    session_dir = get_session_path(session_id)
+    file_path = session_dir / request.filename
+    file_path.write_bytes(content)
+
+    try:
+        result = parse_3mf(file_path)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+    previews = [PartPreview(name=body.name, vertex_count=body.vertices.shape[0]) for body in result.bodies]
+    return UploadResponse(session_id=session_id, file_url=f"/api/files/{session_id}/{request.filename}", parts_preview=previews)
+
 
 @app.post("/api/analyze", response_model=AnalyzeResponse)
 async def analyze(request: AnalyzeRequest):
