@@ -103,6 +103,7 @@ class ReportRequest(BaseModel):
 
 
 class ProjectCreate(BaseModel):
+    project_id: str | None = None  # if set, update existing project
     name: str
     filename: str
     session_id: str
@@ -111,6 +112,7 @@ class ProjectCreate(BaseModel):
     all_solid: bool = False
     display_units: str = "in"
     analysis_result: AnalyzeResponse
+    optimize_result: "OptimizeResponse | None" = None
     thumbnail: str | None = None
 
 
@@ -137,6 +139,7 @@ class ProjectDetail(BaseModel):
     all_solid: bool
     display_units: str
     analysis_result: AnalyzeResponse
+    optimize_result: "OptimizeResponse | None" = None
     file_url: str
     thumbnail_url: str | None
     created_at: str
@@ -203,3 +206,8 @@ class OptimizeResponse(BaseModel):
     boards: list[BoardLayout]
     summary: OptimizeSummary
     updated_shopping_list: list[ShoppingItem]
+
+
+# Resolve forward references now that all classes are defined
+ProjectCreate.model_rebuild()
+ProjectDetail.model_rebuild()

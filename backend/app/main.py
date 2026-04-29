@@ -15,7 +15,7 @@ from app.units import mm_to_inches
 from app.report import generate_report_pdf
 from app.auth import require_user
 from app.storage import upload_file as storage_upload, get_signed_url, delete_files
-from app.database import create_project, list_projects, get_project, delete_project
+from app.database import create_project, update_project, list_projects, get_project, delete_project
 import base64
 import uuid
 import requests as http_requests
@@ -240,6 +240,41 @@ async def download_report(request: ReportRequest, user: dict = Depends(require_u
 
 @app.post("/api/projects", status_code=201)
 async def save_project(request: ProjectCreate, user: dict = Depends(require_user)):
+    user_id = user["id"]
+    analysis_dict = request.analysis_result.model_dump(mode="json")
+    optimize_dict = request.optimize_result.model_dump(mode="json") if request.optimize_result else None
+
+    # Update existing project
+    if request.project_id:
+        existing = get_project(request.project_id, user_id)
+        if existing is None:
+            raise HTTPException(status_code=404, detail="Project not found")
+
+        # Update thumbnail if provided
+        thumbnail_path = existing.get("thumbnail_path")
+        if request.thumbnail:
+            thumbnail_path = thumbnail_path or f"{user_id}/{request.project_id}/thumbnail.png"
+            b64_data = request.thumbnail.split(",", 1)[-1]
+            thumb_bytes = base64.b64decode(b64_data)
+            try:
+                storage_upload(thumbnail_path, thumb_bytes, "image/png")
+            except Exception:
+                pass  # thumbnail update is best-effort (may already exist)
+
+        update_project(
+            project_id=request.project_id,
+            user_id=user_id,
+            analysis_result=analysis_dict,
+            solid_species=request.solid_species,
+            sheet_type=request.sheet_type,
+            all_solid=request.all_solid,
+            display_units=request.display_units,
+            optimize_result=optimize_dict,
+            thumbnail_path=thumbnail_path,
+        )
+        return {"id": request.project_id, "message": "Project updated"}
+
+    # Create new project
     session_dir = get_session_path(request.session_id)
     if session_dir is None:
         raise HTTPException(status_code=404, detail="Session not found")
@@ -248,7 +283,6 @@ async def save_project(request: ProjectCreate, user: dict = Depends(require_user
         raise HTTPException(status_code=404, detail="No 3MF file in session")
 
     project_id = str(uuid.uuid4())
-    user_id = user["id"]
 
     file_path = f"{user_id}/{project_id}/model.3mf"
     file_bytes = threemf_files[0].read_bytes()
@@ -261,7 +295,6 @@ async def save_project(request: ProjectCreate, user: dict = Depends(require_user
         thumb_bytes = base64.b64decode(b64_data)
         storage_upload(thumbnail_path, thumb_bytes, "image/png")
 
-    analysis_dict = request.analysis_result.model_dump(mode="json")
     create_project(
         user_id=user_id,
         name=request.name,
@@ -273,6 +306,7 @@ async def save_project(request: ProjectCreate, user: dict = Depends(require_user
         analysis_result=analysis_dict,
         file_path=file_path,
         thumbnail_path=thumbnail_path,
+        optimize_result=optimize_dict,
     )
 
     return {"id": project_id, "message": "Project saved"}
@@ -323,6 +357,7 @@ async def get_user_project(project_id: str, user: dict = Depends(require_user)):
         thumbnail_url = get_signed_url(row["thumbnail_path"])
 
     analysis = AnalyzeResponse(**row["analysis_result"])
+    optimize = OptimizeResponse(**row["optimize_result"]) if row.get("optimize_result") else None
 
     return ProjectDetail(
         id=row["id"],
@@ -333,6 +368,7 @@ async def get_user_project(project_id: str, user: dict = Depends(require_user)):
         all_solid=row["all_solid"],
         display_units=row["display_units"],
         analysis_result=analysis,
+        optimize_result=optimize,
         file_url=file_url,
         thumbnail_url=thumbnail_url,
         created_at=row["created_at"],

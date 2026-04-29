@@ -79,6 +79,7 @@ export interface ProjectDetail {
 	all_solid: boolean;
 	display_units: DisplayUnits;
 	analysis_result: AnalyzeResponse;
+	optimize_result: OptimizeResponse | null;
 	file_url: string;
 	thumbnail_url: string | null;
 	created_at: string;

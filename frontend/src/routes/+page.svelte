@@ -18,6 +18,7 @@
 	let downloadingPdf = $state(false);
 	let savingProject = $state(false);
 	let projectSaved = $state(false);
+	let loadedProjectId = $state<string | null>(null);
 	let error = $state('');
 	let status = $state('');
 	let modelApi = $state<ModelViewerApi>();
@@ -108,14 +109,17 @@
 		try {
 			const thumbnail = modelApi?.captureScreenshot() ?? null;
 			const name = uploadResult.file_url.split('/').pop()?.replace('.3mf', '') || 'Untitled';
-			await saveProject({
+			const result = await saveProject({
+				project_id: loadedProjectId,
 				name,
 				filename: uploadResult.file_url.split('/').pop() || 'model.3mf',
 				session_id: uploadResult.session_id,
 				...lastConfig,
 				analysis_result: analyzeResult,
+				optimize_result: optimizeResult,
 				thumbnail,
 			});
+			loadedProjectId = result.id;
 			projectSaved = true;
 		} catch (e) {
 			error = e instanceof Error ? e.message : 'Save failed';
@@ -151,6 +155,7 @@
 		status = '';
 		lastConfig = null;
 		projectSaved = false;
+		loadedProjectId = null;
 		if (page.url.searchParams.has('project')) {
 			goto('/', { replaceState: true });
 		}
@@ -174,6 +179,8 @@
 				status = 'Restoring session...';
 				const restored = await restoreSession(project.file_url, project.filename);
 				uploadResult = restored;
+				optimizeResult = project.optimize_result;
+				loadedProjectId = project.id;
 
 				projectSaved = true;
 				status = '';

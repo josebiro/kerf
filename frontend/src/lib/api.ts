@@ -97,6 +97,7 @@ export async function downloadReport(request: {
 }
 
 export async function saveProject(request: {
+	project_id?: string | null;
 	name: string;
 	filename: string;
 	session_id: string;
@@ -105,6 +106,7 @@ export async function saveProject(request: {
 	all_solid?: boolean;
 	display_units?: string;
 	analysis_result: AnalyzeResponse;
+	optimize_result?: OptimizeResponse | null;
 	thumbnail?: string | null;
 }): Promise<{ id: string }> {
 	const response = await fetch(`${BASE}/projects`, {
