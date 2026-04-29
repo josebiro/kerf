@@ -153,4 +153,7 @@ export interface OptimizeResponse {
 	boards: BoardLayout[];
 	summary: OptimizeSummary;
 	updated_shopping_list: ShoppingItem[];
+	buffer_config: BufferConfig;
+	board_sizes: Record<string, BoardSizeConfig>;
+	sheet_size: SheetSizeConfig;
 }

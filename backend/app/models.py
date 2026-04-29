@@ -213,6 +213,9 @@ class OptimizeResponse(BaseModel):
     boards: list[BoardLayout]
     summary: OptimizeSummary
     updated_shopping_list: list[ShoppingItem]
+    buffer_config: BufferConfig = BufferConfig()
+    board_sizes: dict[str, BoardSizeConfig] = {}
+    sheet_size: SheetSizeConfig = SheetSizeConfig()
 
 
 # Resolve forward references now that all classes are defined

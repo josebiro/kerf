@@ -18,17 +18,38 @@
 		{ width: 24, length: 48, label: "2' × 4' (quarter)" },
 	];
 
-	let sheetMode = $state<'percentage' | 'extra_parts'>('percentage');
-	let sheetValue = $state(15);
-	let lumberMode = $state<'percentage' | 'extra_parts'>('extra_parts');
-	let lumberValue = $state(1);
-	let selectedSheetSize = $state(0); // index into SHEET_SIZE_OPTIONS
+	// Initialize from saved config in result
+	let sheetMode = $state<'percentage' | 'extra_parts'>(
+		(result.buffer_config?.sheet_mode as 'percentage' | 'extra_parts') || 'percentage'
+	);
+	let sheetValue = $state(result.buffer_config?.sheet_value ?? 15);
+	let lumberMode = $state<'percentage' | 'extra_parts'>(
+		(result.buffer_config?.lumber_mode as 'percentage' | 'extra_parts') || 'extra_parts'
+	);
+	let lumberValue = $state(result.buffer_config?.lumber_value ?? 1);
 
-	// Collect unique thicknesses from boards
+	// Find matching sheet size index from saved config
+	function findSheetSizeIndex(): number {
+		if (!result.sheet_size) return 0;
+		const idx = SHEET_SIZE_OPTIONS.findIndex(
+			o => o.width === result.sheet_size.width && o.length === result.sheet_size.length
+		);
+		return idx >= 0 ? idx : 0;
+	}
+	let selectedSheetSize = $state(findSheetSizeIndex());
+
+	// Initialize board sizes from saved config, falling back to result boards
 	let boardSizes = $state<Record<string, { width: number; length: number }>>({});
 
 	$effect(() => {
 		const sizes: Record<string, { width: number; length: number }> = {};
+		// Start from saved board_sizes config if available
+		if (result.board_sizes) {
+			for (const [thickness, size] of Object.entries(result.board_sizes)) {
+				sizes[thickness] = { width: size.width, length: size.length };
+			}
+		}
+		// Fill in any missing thicknesses from the actual board layouts
 		for (const board of result.boards) {
 			if (board.thickness && !sizes[board.thickness]) {
 				sizes[board.thickness] = { width: board.width, length: board.length };

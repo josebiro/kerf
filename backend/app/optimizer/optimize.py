@@ -139,4 +139,7 @@ def run_optimization(
             total_spare_parts=total_spares,
         ),
         updated_shopping_list=updated,
+        buffer_config=buffer_config,
+        board_sizes=sizes,
+        sheet_size=s_size,
     )
