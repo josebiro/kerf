@@ -6,23 +6,25 @@
 	interface Props {
 		onAnalyze: (config: { solid_species: string; sheet_type: string; all_solid: boolean; display_units: DisplayUnits; }) => void;
 		analyzing: boolean;
+		initialConfig?: { solid_species: string; sheet_type: string; all_solid: boolean; display_units: DisplayUnits } | null;
 	}
 
-	let { onAnalyze, analyzing }: Props = $props();
+	let { onAnalyze, analyzing, initialConfig = null }: Props = $props();
 	let speciesList = $state<string[]>([]);
 	let sheetTypesList = $state<string[]>([]);
-	let solidSpecies = $state('');
-	let sheetType = $state('');
-	let allSolid = $state(false);
-	let displayUnits = $state<DisplayUnits>('in');
+	let solidSpecies = $state(initialConfig?.solid_species || '');
+	let sheetType = $state(initialConfig?.sheet_type || '');
+	let allSolid = $state(initialConfig?.all_solid || false);
+	let displayUnits = $state<DisplayUnits>(initialConfig?.display_units || 'in');
 	let loading = $state(true);
 
 	onMount(async () => {
 		const [species, sheets] = await Promise.all([getSpecies(), getSheetTypes()]);
 		speciesList = species;
 		sheetTypesList = sheets;
-		solidSpecies = species[0] || '';
-		sheetType = sheets[0] || '';
+		// Only use defaults if no initial config was provided
+		if (!solidSpecies) solidSpecies = species[0] || '';
+		if (!sheetType) sheetType = sheets[0] || '';
 		loading = false;
 	});
 

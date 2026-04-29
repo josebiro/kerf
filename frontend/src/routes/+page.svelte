@@ -235,7 +235,7 @@
 					</div>
 					<div>
 						<h3 class="text-sm font-medium text-gray-600 mb-2">Material Settings</h3>
-						<Configure onAnalyze={handleAnalyze} {analyzing} />
+						<Configure onAnalyze={handleAnalyze} {analyzing} initialConfig={lastConfig} />
 					</div>
 				</div>
 				<div class="lg:col-span-2">
