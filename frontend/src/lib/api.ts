@@ -74,6 +74,7 @@ export async function downloadReport(request: {
 	display_units?: string;
 	thumbnail?: string | null;
 	analysis_result?: AnalyzeResponse | null;
+	optimize_result?: OptimizeResponse | null;
 }): Promise<void> {
 	const response = await fetch(`${BASE}/report`, {
 		method: 'POST',

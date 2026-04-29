@@ -213,16 +213,19 @@ async def download_report(request: ReportRequest, user: dict = Depends(require_u
         )
         filename = threemf_files[0].name
 
-    # Run optimizer for PDF
-    try:
-        opt_result = _run_optimization(
-            parts=analyze_response.parts,
-            shopping_list=analyze_response.shopping_list,
-            solid_species=request.solid_species,
-            sheet_type=request.sheet_type,
-        )
-    except Exception:
-        opt_result = None
+    # Use provided optimization result, or run with defaults as fallback
+    if request.optimize_result is not None:
+        opt_result = request.optimize_result
+    else:
+        try:
+            opt_result = _run_optimization(
+                parts=analyze_response.parts,
+                shopping_list=analyze_response.shopping_list,
+                solid_species=request.solid_species,
+                sheet_type=request.sheet_type,
+            )
+        except Exception:
+            opt_result = None
 
     pdf_bytes = generate_report_pdf(
         analyze_response, filename,

@@ -100,6 +100,7 @@ class ReportRequest(BaseModel):
     display_units: str = "in"
     thumbnail: str | None = None  # base64 data URL from canvas
     analysis_result: AnalyzeResponse | None = None  # pre-computed results (for saved projects)
+    optimize_result: "OptimizeResponse | None" = None  # pre-computed cut layout
 
 
 class ProjectCreate(BaseModel):
@@ -221,3 +222,4 @@ class OptimizeResponse(BaseModel):
 # Resolve forward references now that all classes are defined
 ProjectCreate.model_rebuild()
 ProjectDetail.model_rebuild()
+ReportRequest.model_rebuild()
