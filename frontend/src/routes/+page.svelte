@@ -141,6 +141,7 @@
 				board_sizes: boardSizes,
 				sheet_size: sheetSize,
 			});
+			projectSaved = false; // mark unsaved after re-optimization
 		} catch (e) {
 			error = e instanceof Error ? e.message : 'Optimization failed';
 		} finally {
