@@ -8,8 +8,8 @@
 	let { layout }: Props = $props();
 
 	const scale = 4; // pixels per inch
-	const svgWidth = layout.width * scale;
-	const svgHeight = layout.length * scale;
+	const svgWidth = $derived(layout.width * scale);
+	const svgHeight = $derived(layout.length * scale);
 
 	function partColor(isspare: boolean): string {
 		return isspare ? '#92702a' : '#3d7a4a';
