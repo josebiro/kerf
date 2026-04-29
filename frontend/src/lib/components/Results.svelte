@@ -17,6 +17,13 @@
 	let { result, onDownloadPdf, downloadingPdf = false, isAuthenticated = false, onSaveProject, savingProject = false, projectSaved = false, optimizeResult = null, onReoptimize, optimizing = false }: Props = $props();
 	let activeTab = $state<'parts' | 'shopping' | 'cost' | 'cutlayout'>('parts');
 
+	const costItems = $derived(optimizeResult?.updated_shopping_list ?? result.cost_estimate.items);
+	const costTotal = $derived(() => {
+		const subtotals = costItems.filter(i => i.subtotal !== null).map(i => i.subtotal!);
+		return subtotals.length > 0 ? subtotals.reduce((a, b) => a + b, 0) : null;
+	});
+	const hasMissingPrices = $derived(costItems.some(i => i.subtotal === null));
+
 	function formatDimensions(part: Part, units: DisplayUnits): string {
 		if (units === 'mm') return `${part.length_mm} × ${part.width_mm} × ${part.thickness_mm} mm`;
 		const l = (part.length_mm / 25.4).toFixed(2);
@@ -127,7 +134,7 @@
 					<th class="py-2 pr-4">Material</th><th class="py-2 pr-4">Qty</th><th class="py-2 pr-4">Unit Price</th><th class="py-2">Subtotal</th>
 				</tr></thead>
 				<tbody>
-					{#each result.cost_estimate.items as item}
+					{#each costItems as item}
 						<tr class="border-b border-[var(--color-border)]">
 							<td class="py-2 pr-4">
 								{#if item.url}
@@ -143,11 +150,11 @@
 					{/each}
 				</tbody>
 				<tfoot><tr class="border-t-2 border-[var(--color-border-strong)] font-medium">
-					<td colspan="3" class="py-2 text-right pr-4">Estimated Total:</td><td class="py-2">{formatPrice(result.cost_estimate.total)}</td>
+					<td colspan="3" class="py-2 text-right pr-4">Estimated Total:</td><td class="py-2">{formatPrice(costTotal())}</td>
 				</tr></tfoot>
 			</table>
 		</div>
-		{#if result.cost_estimate.has_missing_prices}
+		{#if hasMissingPrices}
 			<p class="mt-2 text-sm text-amber-600">Some prices are unavailable. Total is a partial estimate.</p>
 		{/if}
 	{/if}
