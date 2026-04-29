@@ -1,21 +1,32 @@
 services:
-  backend:
-    build: ./backend
+  caddy:
+    image: caddy:2-alpine
     ports:
-      - "8000:8000"
+      - "80:80"
     volumes:
-      - backend-sessions:/app/sessions
-    environment:
-      - PYTHONUNBUFFERED=1
-
-  frontend:
-    build: ./frontend
-    ports:
-      - "3000:3000"
-    environment:
-      - ORIGIN=http://localhost:3000
+      - ./Caddyfile:/etc/caddy/Caddyfile
     depends_on:
       - backend
+      - frontend
+
+  backend:
+    build: ./backend
+    env_file: ./backend/.env
+    environment:
+      - PYTHONUNBUFFERED=1
+    volumes:
+      - backend-sessions:/app/sessions
+      - backend-cache:/app/cache
+
+  frontend:
+    build:
+      context: ./frontend
+      args:
+        PUBLIC_SUPABASE_URL: ${PUBLIC_SUPABASE_URL}
+        PUBLIC_SUPABASE_ANON_KEY: ${PUBLIC_SUPABASE_ANON_KEY}
+    environment:
+      - ORIGIN=http://localhost
 
 volumes:
   backend-sessions:
+  backend-cache:
