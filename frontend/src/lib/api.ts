@@ -60,6 +60,7 @@ export async function downloadReport(request: {
 	all_solid?: boolean;
 	display_units?: string;
 	thumbnail?: string | null;
+	analysis_result?: AnalyzeResponse | null;
 }): Promise<void> {
 	const response = await fetch(`${BASE}/report`, {
 		method: 'POST',

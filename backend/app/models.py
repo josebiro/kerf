@@ -93,12 +93,13 @@ class AnalyzeResponse(BaseModel):
 
 
 class ReportRequest(BaseModel):
-    session_id: str
+    session_id: str = ""
     solid_species: str
     sheet_type: str
     all_solid: bool = False
     display_units: str = "in"
     thumbnail: str | None = None  # base64 data URL from canvas
+    analysis_result: AnalyzeResponse | None = None  # pre-computed results (for saved projects)
 
 
 class ProjectCreate(BaseModel):

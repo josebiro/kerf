@@ -82,6 +82,7 @@
 				session_id: uploadResult.session_id,
 				...lastConfig,
 				thumbnail,
+				analysis_result: !uploadResult.session_id ? analyzeResult : null,
 			});
 		} catch (e) {
 			const msg = e instanceof Error ? e.message : 'PDF generation failed';

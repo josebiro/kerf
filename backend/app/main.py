@@ -114,74 +114,80 @@ async def get_sheet_types():
 
 @app.post("/api/report")
 async def download_report(request: ReportRequest, user: dict = Depends(require_user)):
-    session_dir = get_session_path(request.session_id)
-    if session_dir is None:
-        raise HTTPException(status_code=404, detail="Session not found")
-    threemf_files = list(session_dir.glob("*.3mf"))
-    if not threemf_files:
-        raise HTTPException(status_code=404, detail="No 3MF file in session")
+    from app.optimizer.optimize import run_optimization as _run_optimization
 
-    # Run the same analysis pipeline as /api/analyze
-    result = parse_3mf(threemf_files[0])
-    parts: list[Part] = []
-    seen_geometries: dict[str, int] = {}
-    for body in result.bodies:
-        length_mm, width_mm, thickness_mm = compute_dimensions(body.vertices)
-        length_in = mm_to_inches(length_mm)
-        width_in = mm_to_inches(width_mm)
-        thickness_in = mm_to_inches(thickness_mm)
-        board_type, notes = classify_board_type(length_in, width_in, thickness_in, all_solid=request.all_solid)
-        geo_key = f"{round(length_mm, 1)}x{round(width_mm, 1)}x{round(thickness_mm, 1)}"
-        if geo_key in seen_geometries:
-            idx = seen_geometries[geo_key]
-            parts[idx] = parts[idx].model_copy(update={"quantity": parts[idx].quantity + 1})
-            continue
-        part = Part(name=body.name, quantity=1, length_mm=round(length_mm, 2), width_mm=round(width_mm, 2),
-                    thickness_mm=round(thickness_mm, 2), board_type=board_type, stock="", notes=notes)
-        part = map_part_to_stock(part, species=request.solid_species, sheet_type=request.sheet_type)
-        seen_geometries[geo_key] = len(parts)
-        parts.append(part)
+    # Use pre-computed results if provided (e.g., from a saved project)
+    if request.analysis_result is not None:
+        analyze_response = request.analysis_result
+        filename = "project.3mf"
+    else:
+        # Run the analysis pipeline from session
+        session_dir = get_session_path(request.session_id)
+        if session_dir is None:
+            raise HTTPException(status_code=404, detail="Session not found")
+        threemf_files = list(session_dir.glob("*.3mf"))
+        if not threemf_files:
+            raise HTTPException(status_code=404, detail="No 3MF file in session")
 
-    shopping_list = aggregate_shopping_list(parts)
-    supplier = get_supplier("woodworkers_source")
-    for i, item in enumerate(shopping_list):
-        updates: dict = {}
-        if item.unit == "BF":
-            price = supplier.get_price(request.solid_species, item.thickness, item.quantity)
-            if price is not None:
-                updates["unit_price"] = price / item.quantity if item.quantity > 0 else 0
-            url = supplier.get_product_url(request.solid_species, item.thickness)
-            if url is not None:
-                updates["url"] = url
-        else:
-            price = supplier.get_sheet_price(request.sheet_type, item.thickness)
-            if price is not None:
-                updates["unit_price"] = price
-            url = supplier.get_sheet_url(request.sheet_type, item.thickness)
-            if url is not None:
-                updates["url"] = url
-        if updates:
-            shopping_list[i] = item.model_copy(update=updates)
+        result = parse_3mf(threemf_files[0])
+        parts: list[Part] = []
+        seen_geometries: dict[str, int] = {}
+        for body in result.bodies:
+            length_mm, width_mm, thickness_mm = compute_dimensions(body.vertices)
+            length_in = mm_to_inches(length_mm)
+            width_in = mm_to_inches(width_mm)
+            thickness_in = mm_to_inches(thickness_mm)
+            board_type, notes = classify_board_type(length_in, width_in, thickness_in, all_solid=request.all_solid)
+            geo_key = f"{round(length_mm, 1)}x{round(width_mm, 1)}x{round(thickness_mm, 1)}"
+            if geo_key in seen_geometries:
+                idx = seen_geometries[geo_key]
+                parts[idx] = parts[idx].model_copy(update={"quantity": parts[idx].quantity + 1})
+                continue
+            part = Part(name=body.name, quantity=1, length_mm=round(length_mm, 2), width_mm=round(width_mm, 2),
+                        thickness_mm=round(thickness_mm, 2), board_type=board_type, stock="", notes=notes)
+            part = map_part_to_stock(part, species=request.solid_species, sheet_type=request.sheet_type)
+            seen_geometries[geo_key] = len(parts)
+            parts.append(part)
 
-    cost_estimate = CostEstimate(items=shopping_list)
-    analyze_response = AnalyzeResponse(
-        parts=parts, shopping_list=shopping_list,
-        cost_estimate=cost_estimate, display_units=request.display_units,
-    )
+        shopping_list = aggregate_shopping_list(parts)
+        supplier = get_supplier("woodworkers_source")
+        for i, item in enumerate(shopping_list):
+            updates: dict = {}
+            if item.unit == "BF":
+                price = supplier.get_price(request.solid_species, item.thickness, item.quantity)
+                if price is not None:
+                    updates["unit_price"] = price / item.quantity if item.quantity > 0 else 0
+                url = supplier.get_product_url(request.solid_species, item.thickness)
+                if url is not None:
+                    updates["url"] = url
+            else:
+                price = supplier.get_sheet_price(request.sheet_type, item.thickness)
+                if price is not None:
+                    updates["unit_price"] = price
+                url = supplier.get_sheet_url(request.sheet_type, item.thickness)
+                if url is not None:
+                    updates["url"] = url
+            if updates:
+                shopping_list[i] = item.model_copy(update=updates)
+
+        cost_estimate = CostEstimate(items=shopping_list)
+        analyze_response = AnalyzeResponse(
+            parts=parts, shopping_list=shopping_list,
+            cost_estimate=cost_estimate, display_units=request.display_units,
+        )
+        filename = threemf_files[0].name
 
     # Run optimizer for PDF
-    from app.optimizer.optimize import run_optimization as _run_optimization
     try:
         opt_result = _run_optimization(
-            parts=parts,
-            shopping_list=shopping_list,
+            parts=analyze_response.parts,
+            shopping_list=analyze_response.shopping_list,
             solid_species=request.solid_species,
             sheet_type=request.sheet_type,
         )
     except Exception:
         opt_result = None
 
-    filename = threemf_files[0].name
     pdf_bytes = generate_report_pdf(
         analyze_response, filename,
         request.solid_species, request.sheet_type,
