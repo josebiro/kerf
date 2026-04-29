@@ -124,4 +124,4 @@ Live prices scraped from Woodworkers Source with a 24-hour JSON cache. Falls bac
 
 ## License
 
-MIT
+Apache 2.0 — see [LICENSE](LICENSE)
