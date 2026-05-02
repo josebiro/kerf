@@ -14,12 +14,16 @@ from datetime import datetime, timezone
 from app.supabase_client import get_supabase_client
 from app.suppliers.crawler_base import CrawlerBase
 from app.suppliers.woodworkers_source import WoodworkersSourceCrawler
+from app.suppliers.knotty_lumber import KnottyLumberCrawler
+from app.suppliers.makerstock import MakerstockCrawler
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 logger = logging.getLogger(__name__)
 
 CRAWLERS: dict[str, type[CrawlerBase]] = {
     "woodworkers_source": WoodworkersSourceCrawler,
+    "knotty_lumber": KnottyLumberCrawler,
+    "makerstock": MakerstockCrawler,
 }
 
 
