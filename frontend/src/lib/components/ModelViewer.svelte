@@ -31,7 +31,7 @@
 
 	onMount(() => {
 		scene = new THREE.Scene();
-		scene.background = new THREE.Color(0xf0f0f0);
+		scene.background = new THREE.Color(0x0f1219);
 		camera = new THREE.PerspectiveCamera(45, container.clientWidth / container.clientHeight, 0.1, 10000);
 		camera.position.set(200, 200, 200);
 		renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
@@ -45,7 +45,7 @@
 		const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
 		directionalLight.position.set(1, 1, 1);
 		scene.add(directionalLight);
-		const grid = new THREE.GridHelper(1000, 20, 0xcccccc, 0xe0e0e0);
+		const grid = new THREE.GridHelper(1000, 20, 0x1e293b, 0x1e293b);
 		scene.add(grid);
 
 		const loader = new ThreeMFLoader();
@@ -90,4 +90,4 @@
 	});
 </script>
 
-<div bind:this={container} class="w-full h-80 rounded-lg border border-gray-200 overflow-hidden bg-gray-50"></div>
+<div bind:this={container} class="w-full h-80 rounded-lg border border-[var(--color-border)] overflow-hidden bg-[var(--color-bg)]"></div>

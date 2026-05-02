@@ -9,6 +9,7 @@
 	import { analyze, downloadReport, saveProject, getProjectDetail, optimizeCuts, restoreSession } from '$lib/api';
 	import { isAuthenticated } from '$lib/stores/auth';
 	import LandingPage from '$lib/components/LandingPage.svelte';
+	import StepIndicator from '$lib/components/StepIndicator.svelte';
 	import type { UploadResponse, AnalyzeResponse, DisplayUnits, OptimizeResponse, BufferConfig, BoardSizeConfig, SheetSizeConfig } from '$lib/types';
 
 	let uploadResult = $state<UploadResponse | null>(null);
@@ -24,6 +25,7 @@
 	let status = $state('');
 	let modelApi = $state<ModelViewerApi>();
 	let lastConfig = $state<{ solid_species: string; sheet_type: string; all_solid: boolean; display_units: DisplayUnits } | null>(null);
+	const currentStep = $derived<1 | 2 | 3>(analyzeResult ? 3 : uploadResult ? 2 : 1);
 
 	function handleUpload(result: UploadResponse) {
 		uploadResult = result;
@@ -205,6 +207,7 @@
 	<LandingPage />
 {:else}
 	<main class="max-w-6xl mx-auto px-6 py-8">
+		<StepIndicator {currentStep} />
 		{#if !uploadResult}
 			<div class="max-w-lg mx-auto">
 				<h2 class="text-lg font-medium text-[var(--color-text)] mb-4">Upload a 3MF File</h2>

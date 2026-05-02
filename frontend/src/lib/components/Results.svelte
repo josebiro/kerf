@@ -63,18 +63,18 @@
 
 <div>
 	<div class="flex gap-1 mb-4 border-b border-[var(--color-border)]">
-		<button class="px-4 py-2 text-sm transition-colors duration-150 {activeTab === 'parts' ? 'border-b-2 border-[var(--color-primary)] text-[var(--color-primary)] font-medium' : 'text-[var(--color-foreground-muted)] hover:text-[var(--color-foreground)]'}" onclick={() => (activeTab = 'parts')}>Parts List</button>
-		<button class="px-4 py-2 text-sm transition-colors duration-150 {activeTab === 'shopping' ? 'border-b-2 border-[var(--color-primary)] text-[var(--color-primary)] font-medium' : 'text-[var(--color-foreground-muted)] hover:text-[var(--color-foreground)]'}" onclick={() => (activeTab = 'shopping')}>Shopping List</button>
-		<button class="px-4 py-2 text-sm transition-colors duration-150 {activeTab === 'cost' ? 'border-b-2 border-[var(--color-primary)] text-[var(--color-primary)] font-medium' : 'text-[var(--color-foreground-muted)] hover:text-[var(--color-foreground)]'}" onclick={() => (activeTab = 'cost')}>Cost Estimate</button>
+		<button class="px-4 py-2 text-sm transition-colors duration-150 {activeTab === 'parts' ? 'border-b-2 border-[var(--color-primary)] text-[var(--color-primary)] font-medium' : 'text-[var(--color-text-secondary)] hover:text-[var(--color-text)]'}" onclick={() => (activeTab = 'parts')}>Parts List</button>
+		<button class="px-4 py-2 text-sm transition-colors duration-150 {activeTab === 'shopping' ? 'border-b-2 border-[var(--color-primary)] text-[var(--color-primary)] font-medium' : 'text-[var(--color-text-secondary)] hover:text-[var(--color-text)]'}" onclick={() => (activeTab = 'shopping')}>Shopping List</button>
+		<button class="px-4 py-2 text-sm transition-colors duration-150 {activeTab === 'cost' ? 'border-b-2 border-[var(--color-primary)] text-[var(--color-primary)] font-medium' : 'text-[var(--color-text-secondary)] hover:text-[var(--color-text)]'}" onclick={() => (activeTab = 'cost')}>Cost Estimate</button>
 		{#if optimizeResult}
-			<button class="px-4 py-2 text-sm transition-colors duration-150 {activeTab === 'cutlayout' ? 'border-b-2 border-[var(--color-primary)] text-[var(--color-primary)] font-medium' : 'text-[var(--color-foreground-muted)] hover:text-[var(--color-foreground)]'}" onclick={() => (activeTab = 'cutlayout')}>Cut Layout</button>
+			<button class="px-4 py-2 text-sm transition-colors duration-150 {activeTab === 'cutlayout' ? 'border-b-2 border-[var(--color-primary)] text-[var(--color-primary)] font-medium' : 'text-[var(--color-text-secondary)] hover:text-[var(--color-text)]'}" onclick={() => (activeTab = 'cutlayout')}>Cut Layout</button>
 		{/if}
 	</div>
 
 	{#if activeTab === 'parts'}
 		<div class="overflow-x-auto">
 			<table class="w-full text-sm">
-				<thead><tr class="border-b border-[var(--color-border)] text-left text-[var(--color-foreground-muted)]">
+				<thead><tr class="border-b border-[var(--color-border)] text-left text-[var(--color-text-secondary)]">
 					<th class="py-2 pr-4">Part</th><th class="py-2 pr-4">Qty</th><th class="py-2 pr-4">Dimensions</th><th class="py-2 pr-4">Type</th><th class="py-2 pr-4">Stock</th><th class="py-2">Notes</th>
 				</tr></thead>
 				<tbody>
@@ -83,9 +83,9 @@
 							<td class="py-2 pr-4">{part.name}</td>
 							<td class="py-2 pr-4">{part.quantity}</td>
 							<td class="py-2 pr-4 font-mono text-xs">{formatDimensions(part, result.display_units)}</td>
-							<td class="py-2 pr-4"><span class="px-2 py-0.5 rounded text-xs {part.board_type === 'solid' ? 'bg-emerald-50 text-[#1B6B4A]' : part.board_type === 'sheet' ? 'bg-amber-50 text-[#A16207]' : 'bg-purple-50 text-[#6B21A8]'}">{part.board_type}</span></td>
+							<td class="py-2 pr-4"><span class="px-2 py-0.5 rounded text-xs {part.board_type === 'solid' ? 'bg-emerald-900/20 text-emerald-400' : part.board_type === 'sheet' ? 'bg-amber-900/20 text-amber-400' : 'bg-purple-900/20 text-purple-400'}">{part.board_type}</span></td>
 							<td class="py-2 pr-4">{part.stock}</td>
-							<td class="py-2 text-[var(--color-foreground-muted)] text-xs">{part.notes || '—'}</td>
+							<td class="py-2 text-[var(--color-text-secondary)] text-xs">{part.notes || '—'}</td>
 						</tr>
 					{/each}
 				</tbody>
@@ -99,25 +99,25 @@
 				<div class="border border-[var(--color-border)] rounded-lg p-4">
 					<div class="flex justify-between items-start mb-2">
 						<div>
-							<h4 class="font-medium text-[var(--color-foreground)]">
+							<h4 class="font-medium text-[var(--color-text)]">
 							{item.material}
 							{#if item.url}
 								<a href={item.url} target="_blank" rel="noopener noreferrer"
-									class="ml-2 text-xs text-[var(--color-accent)] hover:text-[var(--color-accent-hover)] font-normal transition-colors duration-150">
+									class="ml-2 text-xs text-[var(--color-primary)] hover:text-[var(--color-primary-hover)] font-normal transition-colors duration-150">
 									View on Woodworkers Source ↗
 								</a>
 							{/if}
 						</h4>
-							<p class="text-sm text-[var(--color-foreground-muted)]">{item.description}</p>
+							<p class="text-sm text-[var(--color-text-secondary)]">{item.description}</p>
 						</div>
-						<span class="text-sm font-mono bg-[var(--color-surface-muted)] px-2 py-1 rounded">{item.quantity} {item.unit}</span>
+						<span class="text-sm font-mono bg-[var(--color-surface-hover)] px-2 py-1 rounded">{item.quantity} {item.unit}</span>
 					</div>
 					{#if item.cut_pieces.length > 0}
 						<div class="mt-2">
-							<p class="text-xs text-[var(--color-foreground-muted)] uppercase tracking-wide mb-1">Cut pieces</p>
+							<p class="text-xs text-[var(--color-text-secondary)] uppercase tracking-wide mb-1">Cut pieces</p>
 							<div class="flex flex-wrap gap-2">
 								{#each item.cut_pieces as piece}
-									<span class="text-xs font-mono bg-[var(--color-surface-muted)] border border-[var(--color-border)] px-2 py-1 rounded">{piece}</span>
+									<span class="text-xs font-mono bg-[var(--color-surface-hover)] border border-[var(--color-border)] px-2 py-1 rounded">{piece}</span>
 								{/each}
 							</div>
 						</div>
@@ -130,7 +130,7 @@
 	{#if activeTab === 'cost'}
 		<div class="overflow-x-auto">
 			<table class="w-full text-sm">
-				<thead><tr class="border-b border-[var(--color-border)] text-left text-[var(--color-foreground-muted)]">
+				<thead><tr class="border-b border-[var(--color-border)] text-left text-[var(--color-text-secondary)]">
 					<th class="py-2 pr-4">Material</th><th class="py-2 pr-4">Qty</th><th class="py-2 pr-4">Unit Price</th><th class="py-2">Subtotal</th>
 				</tr></thead>
 				<tbody>
@@ -139,7 +139,7 @@
 							<td class="py-2 pr-4">
 								{#if item.url}
 									<a href={item.url} target="_blank" rel="noopener noreferrer"
-										class="text-[var(--color-accent)] hover:text-[var(--color-accent-hover)] hover:underline transition-colors duration-150">
+										class="text-[var(--color-primary)] hover:text-[var(--color-primary-hover)] hover:underline transition-colors duration-150">
 										{item.material} ↗
 									</a>
 								{:else}
@@ -155,7 +155,7 @@
 			</table>
 		</div>
 		{#if hasMissingPrices}
-			<p class="mt-2 text-sm text-amber-600">Some prices are unavailable. Total is a partial estimate.</p>
+			<p class="mt-2 text-sm text-amber-400">Some prices are unavailable. Total is a partial estimate.</p>
 		{/if}
 	{/if}
 
@@ -182,7 +182,7 @@
 			<button
 				onclick={onDownloadPdf}
 				disabled={downloadingPdf}
-				class="bg-[var(--color-accent)] text-white px-4 py-2 rounded text-sm hover:bg-[var(--color-accent-hover)] disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-150">
+				class="bg-[var(--color-primary)] text-white px-4 py-2 rounded text-sm hover:bg-[var(--color-primary-hover)] disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-150">
 				{#if downloadingPdf}
 					Generating PDF...
 				{:else if !isAuthenticated}
@@ -192,7 +192,7 @@
 				{/if}
 			</button>
 		{/if}
-		<button onclick={exportCsv} class="bg-[var(--color-foreground)] text-white px-4 py-2 rounded text-sm hover:opacity-90 transition-colors duration-150">Export CSV</button>
-		<button onclick={() => window.print()} class="bg-[var(--color-surface-muted)] text-[var(--color-foreground)] px-4 py-2 rounded text-sm hover:opacity-80 transition-colors duration-150">Print</button>
+		<button onclick={exportCsv} class="bg-[var(--color-text)] text-white px-4 py-2 rounded text-sm hover:opacity-90 transition-colors duration-150">Export CSV</button>
+		<button onclick={() => window.print()} class="bg-[var(--color-surface-hover)] text-[var(--color-text)] px-4 py-2 rounded text-sm hover:opacity-80 transition-colors duration-150">Print</button>
 	</div>
 </div>
