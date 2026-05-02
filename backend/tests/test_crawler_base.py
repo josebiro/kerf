@@ -79,3 +79,27 @@ def test_crawled_product_rejects_invalid_unit():
             url=None,
             crawled_at=datetime.now(timezone.utc),
         )
+
+
+from app.suppliers.woodworkers_source import WoodworkersSourceCrawler
+
+
+def test_ws_crawler_has_correct_metadata():
+    crawler = WoodworkersSourceCrawler()
+    assert crawler.supplier_id == "woodworkers_source"
+    assert crawler.supplier_name == "Woodworkers Source"
+    assert "woodworkerssource.com" in crawler.base_url
+
+
+def test_ws_crawler_static_fallback():
+    crawler = WoodworkersSourceCrawler(use_scraper=False)
+    products = crawler.crawl()
+    assert len(products) > 0
+    solid = [p for p in products if p.product_type == "solid"]
+    sheet = [p for p in products if p.product_type == "sheet"]
+    assert len(solid) > 0
+    assert len(sheet) > 0
+    red_oak_4_4 = [p for p in solid if p.species_or_name == "Red Oak" and p.thickness == "4/4"]
+    assert len(red_oak_4_4) == 1
+    assert red_oak_4_4[0].price == 5.50
+    assert red_oak_4_4[0].unit == "board_foot"
