@@ -5,6 +5,7 @@ from fastapi.responses import FileResponse, Response
 from app.models import (AnalyzeRequest, AnalyzeResponse, CostEstimate, Part, PartPreview, ShoppingItem, UploadResponse, ReportRequest)
 from app.models import ProjectCreate, ProjectSummary, ProjectDetail
 from app.models import OptimizeRequest, OptimizeResponse
+from app.models import CatalogItem, UserPreferencesModel
 from app.optimizer.optimize import run_optimization
 from app.parser.threemf import parse_3mf
 from app.analyzer.geometry import compute_dimensions, classify_board_type
@@ -15,7 +16,10 @@ from app.units import mm_to_inches
 from app.report import generate_report_pdf
 from app.auth import require_user
 from app.storage import upload_file as storage_upload, get_signed_url, delete_files
-from app.database import create_project, update_project, list_projects, get_project, delete_project
+from app.database import (
+    create_project, update_project, list_projects, get_project, delete_project,
+    get_user_preferences, upsert_user_preferences, get_catalog as db_get_catalog, get_suppliers,
+)
 import base64
 import uuid
 import requests as http_requests
@@ -404,3 +408,63 @@ async def optimize_cuts(request: OptimizeRequest, user: dict = Depends(require_u
         board_sizes=request.board_sizes,
         sheet_size=request.sheet_size,
     )
+
+
+@app.get("/api/catalog")
+async def get_catalog_endpoint(
+    type: str | None = None,
+    search: str | None = None,
+    user: dict = Depends(require_user),
+):
+    prefs = get_user_preferences(user["id"])
+    enabled = prefs["enabled_suppliers"] if prefs else ["woodworkers_source"]
+    rows = db_get_catalog(product_type=type, search=search, supplier_ids=enabled)
+    items = []
+    for row in rows:
+        supplier_name = ""
+        if row.get("suppliers") and isinstance(row["suppliers"], dict):
+            supplier_name = row["suppliers"].get("name", "")
+        items.append(CatalogItem(
+            supplier_id=row["supplier_id"],
+            supplier_name=supplier_name,
+            product_type=row["product_type"],
+            species_or_name=row["species_or_name"],
+            thickness=row["thickness"],
+            price=float(row["price"]),
+            unit=row["unit"],
+            url=row.get("url"),
+        ))
+    return items
+
+
+@app.get("/api/preferences")
+async def get_preferences(user: dict = Depends(require_user)):
+    prefs = get_user_preferences(user["id"])
+    if prefs is None:
+        return UserPreferencesModel()
+    return UserPreferencesModel(
+        enabled_suppliers=prefs.get("enabled_suppliers", ["woodworkers_source"]),
+        default_species=prefs.get("default_species"),
+        default_sheet_type=prefs.get("default_sheet_type"),
+        default_units=prefs.get("default_units", "in"),
+    )
+
+
+@app.put("/api/preferences")
+async def update_preferences(
+    prefs: UserPreferencesModel,
+    user: dict = Depends(require_user),
+):
+    upsert_user_preferences(
+        user_id=user["id"],
+        enabled_suppliers=prefs.enabled_suppliers,
+        default_species=prefs.default_species,
+        default_sheet_type=prefs.default_sheet_type,
+        default_units=prefs.default_units,
+    )
+    return {"message": "Preferences updated"}
+
+
+@app.get("/api/suppliers")
+async def list_suppliers_endpoint(user: dict = Depends(require_user)):
+    return get_suppliers()

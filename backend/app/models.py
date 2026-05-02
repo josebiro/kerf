@@ -219,6 +219,24 @@ class OptimizeResponse(BaseModel):
     sheet_size: SheetSizeConfig = SheetSizeConfig()
 
 
+class CatalogItem(BaseModel):
+    supplier_id: str
+    supplier_name: str
+    product_type: str
+    species_or_name: str
+    thickness: str
+    price: float
+    unit: str
+    url: str | None = None
+
+
+class UserPreferencesModel(BaseModel):
+    enabled_suppliers: list[str] = ["woodworkers_source"]
+    default_species: str | None = None
+    default_sheet_type: str | None = None
+    default_units: str = "in"
+
+
 # Resolve forward references now that all classes are defined
 ProjectCreate.model_rebuild()
 ProjectDetail.model_rebuild()
