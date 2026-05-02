@@ -34,7 +34,7 @@ def startup_cleanup():
     cleanup_expired_sessions()
 
 @app.post("/api/upload", response_model=UploadResponse)
-async def upload_file(file: UploadFile = File(...)):
+async def upload_file(file: UploadFile = File(...), user: dict = Depends(require_user)):
     if not file.filename or not file.filename.lower().endswith(".3mf"):
         raise HTTPException(status_code=400, detail="Only .3mf files are accepted")
     session_id = create_session()
@@ -51,7 +51,7 @@ async def upload_file(file: UploadFile = File(...)):
 
 
 @app.post("/api/restore-session", response_model=UploadResponse)
-async def restore_session(request: RestoreSessionRequest):
+async def restore_session(request: RestoreSessionRequest, user: dict = Depends(require_user)):
     """Download a 3MF file from a URL into a fresh local session.
 
     Used when loading a saved project — the 3MF is in Supabase Storage
@@ -79,7 +79,7 @@ async def restore_session(request: RestoreSessionRequest):
 
 
 @app.post("/api/analyze", response_model=AnalyzeResponse)
-async def analyze(request: AnalyzeRequest):
+async def analyze(request: AnalyzeRequest, user: dict = Depends(require_user)):
     session_dir = get_session_path(request.session_id)
     if session_dir is None:
         raise HTTPException(status_code=404, detail="Session not found")
@@ -129,7 +129,7 @@ async def analyze(request: AnalyzeRequest):
     return AnalyzeResponse(parts=parts, shopping_list=shopping_list, cost_estimate=cost_estimate, display_units=request.display_units)
 
 @app.get("/api/files/{session_id}/{filename}")
-async def serve_file(session_id: str, filename: str):
+async def serve_file(session_id: str, filename: str, user: dict = Depends(require_user)):
     session_dir = get_session_path(session_id)
     if session_dir is None:
         raise HTTPException(status_code=404, detail="Session not found")
@@ -139,12 +139,12 @@ async def serve_file(session_id: str, filename: str):
     return FileResponse(file_path)
 
 @app.get("/api/species")
-async def get_species():
+async def get_species(user: dict = Depends(require_user)):
     supplier = get_supplier("woodworkers_source")
     return supplier.get_species_list()
 
 @app.get("/api/sheet-types")
-async def get_sheet_types():
+async def get_sheet_types(user: dict = Depends(require_user)):
     supplier = get_supplier("woodworkers_source")
     return supplier.get_sheet_types()
 
@@ -394,7 +394,7 @@ async def delete_user_project(project_id: str, user: dict = Depends(require_user
 
 
 @app.post("/api/optimize", response_model=OptimizeResponse)
-async def optimize_cuts(request: OptimizeRequest):
+async def optimize_cuts(request: OptimizeRequest, user: dict = Depends(require_user)):
     return run_optimization(
         parts=request.parts,
         shopping_list=request.shopping_list,
