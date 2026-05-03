@@ -18,18 +18,12 @@
 			<p class="text-lg text-[var(--color-text-secondary)] max-w-2xl mx-auto mb-8">
 				Upload a 3MF file from Fusion 360, Onshape, or any CAD tool. Kerf analyzes your parts, optimizes cuts, and generates shopping lists with real lumber prices.
 			</p>
-			<div class="flex gap-3 justify-center">
+			<div class="flex justify-center">
 				<button
 					onclick={() => goto('/login?signup=true')}
 					class="bg-[var(--color-primary)] text-white px-6 py-2.5 rounded-md text-sm font-semibold hover:bg-[var(--color-primary-hover)] transition-colors duration-150"
 				>
 					Get Started
-				</button>
-				<button
-					onclick={() => goto('/login')}
-					class="bg-[var(--color-surface)] text-[var(--color-text)] border border-[var(--color-border)] px-6 py-2.5 rounded-md text-sm font-medium hover:bg-[var(--color-surface-hover)] transition-colors duration-150"
-				>
-					Sign In
 				</button>
 			</div>
 		</div>

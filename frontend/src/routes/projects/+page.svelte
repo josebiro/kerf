@@ -49,7 +49,7 @@
 <main class="max-w-6xl mx-auto px-6 py-8">
 	<div class="flex items-center justify-between mb-6">
 		<h2 class="text-lg font-semibold text-[var(--color-text)]">Projects</h2>
-		<a href="/" class="bg-[var(--color-primary)] text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-[var(--color-primary-hover)] transition-colors duration-150">+ New Project</a>
+		<a href="/?new" class="bg-[var(--color-primary)] text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-[var(--color-primary-hover)] transition-colors duration-150">+ New Project</a>
 	</div>
 
 	{#if loading}
@@ -60,7 +60,7 @@
 		<div class="text-center py-16 text-[var(--color-text-secondary)]">
 			<p class="text-lg mb-2">No saved projects yet</p>
 			<p class="text-sm">Upload a 3MF file and click "Save Project" to get started.</p>
-			<a href="/" class="inline-block mt-4 text-[var(--color-primary)] hover:text-[var(--color-primary-hover)] text-sm transition-colors duration-150">Upload a file</a>
+			<a href="/?new" class="inline-block mt-4 text-[var(--color-primary)] hover:text-[var(--color-primary-hover)] text-sm transition-colors duration-150">Upload a file</a>
 		</div>
 	{:else}
 		<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -87,7 +87,7 @@
 					</div>
 				</div>
 			{/each}
-			<a href="/" class="bg-[var(--color-surface)] rounded-lg border border-dashed border-[var(--color-border)] flex items-center justify-center min-h-[240px] hover:border-[var(--color-primary)]/50 transition-all duration-150">
+			<a href="/?new" class="bg-[var(--color-surface)] rounded-lg border border-dashed border-[var(--color-border)] flex items-center justify-center min-h-[240px] hover:border-[var(--color-primary)]/50 transition-all duration-150">
 				<div class="text-center">
 					<div class="text-[var(--color-primary)] text-2xl mb-1">+</div>
 					<div class="text-sm text-[var(--color-text-muted)]">New Project</div>

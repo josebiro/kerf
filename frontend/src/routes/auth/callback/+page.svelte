@@ -3,7 +3,6 @@
 	import { goto } from '$app/navigation';
 	import { page } from '$app/state';
 	import { supabase } from '$lib/supabase';
-
 	let error = $state('');
 
 	onMount(async () => {

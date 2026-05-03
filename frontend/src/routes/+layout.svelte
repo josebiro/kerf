@@ -55,9 +55,9 @@
 									: 'text-[var(--color-text-secondary)] hover:text-[var(--color-text)]'}"
 						>Projects</a>
 						<a
-							href="/"
+							href="/?new"
 							class="px-3 py-1.5 text-xs rounded transition-colors duration-150
-								{page.url.pathname === '/'
+								{page.url.pathname === '/' && page.url.searchParams.has('new')
 									? 'bg-[var(--color-border-strong)] text-[var(--color-text)]'
 									: 'text-[var(--color-text-secondary)] hover:text-[var(--color-text)]'}"
 						>New Project</a>

@@ -167,6 +167,13 @@
 		}
 	}
 
+	// Authenticated users with no active work land on the projects list
+	$effect(() => {
+		if ($isAuthenticated && !uploadResult && !page.url.searchParams.has('project') && !page.url.searchParams.has('new')) {
+			goto('/projects', { replaceState: true });
+		}
+	});
+
 	onMount(async () => {
 		const projectId = page.url.searchParams.get('project');
 		if (projectId && $isAuthenticated) {
