@@ -105,3 +105,60 @@ def delete_project(project_id: str, user_id: str) -> None:
         .eq("user_id", user_id)
         .execute()
     )
+
+
+def get_user_preferences(user_id: str) -> dict[str, Any] | None:
+    client = get_supabase_client()
+    response = (
+        client.table("user_preferences")
+        .select("*")
+        .eq("user_id", user_id)
+        .execute()
+    )
+    if not response.data:
+        return None
+    return response.data[0]
+
+
+def upsert_user_preferences(
+    user_id: str,
+    enabled_suppliers: list[str] | None = None,
+    default_species: str | None = None,
+    default_sheet_type: str | None = None,
+    default_units: str | None = None,
+) -> None:
+    client = get_supabase_client()
+    data: dict[str, Any] = {"user_id": user_id}
+    if enabled_suppliers is not None:
+        data["enabled_suppliers"] = enabled_suppliers
+    if default_species is not None:
+        data["default_species"] = default_species
+    if default_sheet_type is not None:
+        data["default_sheet_type"] = default_sheet_type
+    if default_units is not None:
+        data["default_units"] = default_units
+    client.table("user_preferences").upsert(data, on_conflict="user_id").execute()
+
+
+def get_catalog(
+    product_type: str | None = None,
+    search: str | None = None,
+    supplier_ids: list[str] | None = None,
+) -> list[dict[str, Any]]:
+    client = get_supabase_client()
+    query = client.table("supplier_prices").select("*, suppliers(name)")
+    if product_type:
+        query = query.eq("product_type", product_type)
+    if supplier_ids:
+        query = query.in_("supplier_id", supplier_ids)
+    if search:
+        query = query.ilike("species_or_name", f"%{search}%")
+    query = query.order("species_or_name").order("thickness")
+    response = query.execute()
+    return response.data
+
+
+def get_suppliers() -> list[dict[str, Any]]:
+    client = get_supabase_client()
+    response = client.table("suppliers").select("*").eq("active", True).execute()
+    return response.data

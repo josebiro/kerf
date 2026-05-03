@@ -75,11 +75,11 @@
 
 <div class="space-y-6">
 	<!-- Buffer Controls -->
-	<div class="bg-[var(--color-surface-muted)] border border-[var(--color-border)] rounded-lg p-4">
-		<h4 class="text-sm font-medium text-[var(--color-foreground)] mb-3">Mistake Buffer</h4>
+	<div class="bg-[var(--color-surface-hover)] border border-[var(--color-border)] rounded-lg p-4">
+		<h4 class="text-sm font-medium text-[var(--color-text)] mb-3">Mistake Buffer</h4>
 		<div class="grid grid-cols-1 md:grid-cols-2 gap-4">
 			<div>
-				<label class="text-xs text-[var(--color-foreground-muted)] block mb-1">Sheet goods</label>
+				<label class="text-xs text-[var(--color-text-secondary)] block mb-1">Sheet goods</label>
 				<div class="flex gap-2 items-center">
 					<select bind:value={sheetMode} class="text-sm border border-[var(--color-border)] rounded px-2 py-1">
 						<option value="percentage">Waste %</option>
@@ -87,11 +87,11 @@
 					</select>
 					<input type="number" bind:value={sheetValue} min="0" max="100" step="1"
 						class="w-16 text-sm border border-[var(--color-border)] rounded px-2 py-1" />
-					<span class="text-xs text-[var(--color-foreground-muted)] opacity-60">{sheetMode === 'percentage' ? '%' : 'per part'}</span>
+					<span class="text-xs text-[var(--color-text-secondary)] opacity-60">{sheetMode === 'percentage' ? '%' : 'per part'}</span>
 				</div>
 			</div>
 			<div>
-				<label class="text-xs text-[var(--color-foreground-muted)] block mb-1">Solid lumber</label>
+				<label class="text-xs text-[var(--color-text-secondary)] block mb-1">Solid lumber</label>
 				<div class="flex gap-2 items-center">
 					<select bind:value={lumberMode} class="text-sm border border-[var(--color-border)] rounded px-2 py-1">
 						<option value="extra_parts">Extra parts</option>
@@ -99,7 +99,7 @@
 					</select>
 					<input type="number" bind:value={lumberValue} min="0" max="100" step="1"
 						class="w-16 text-sm border border-[var(--color-border)] rounded px-2 py-1" />
-					<span class="text-xs text-[var(--color-foreground-muted)] opacity-60">{lumberMode === 'percentage' ? '%' : 'per part'}</span>
+					<span class="text-xs text-[var(--color-text-secondary)] opacity-60">{lumberMode === 'percentage' ? '%' : 'per part'}</span>
 				</div>
 			</div>
 		</div>
@@ -107,7 +107,7 @@
 		<!-- Sheet Size Selector -->
 		{#if result.sheets.length > 0}
 			<div class="mt-3 pt-3 border-t border-[var(--color-border)]">
-				<label class="text-xs text-[var(--color-foreground-muted)] block mb-1">Sheet size</label>
+				<label class="text-xs text-[var(--color-text-secondary)] block mb-1">Sheet size</label>
 				<select bind:value={selectedSheetSize} class="text-sm border border-[var(--color-border)] rounded px-2 py-1">
 					{#each SHEET_SIZE_OPTIONS as option, i}
 						<option value={i}>{option.label} ({option.width}" × {option.length}")</option>
@@ -119,11 +119,11 @@
 		<!-- Board Size Editors -->
 		{#if Object.keys(boardSizes).length > 0}
 			<div class="mt-3 pt-3 border-t border-[var(--color-border)]">
-				<label class="text-xs text-[var(--color-foreground-muted)] block mb-1">Board dimensions (editable)</label>
+				<label class="text-xs text-[var(--color-text-secondary)] block mb-1">Board dimensions (editable)</label>
 				<div class="flex flex-wrap gap-3">
 					{#each Object.entries(boardSizes) as [thickness, size]}
 						<div class="flex items-center gap-1 text-xs">
-							<span class="font-medium text-[var(--color-foreground-muted)]">{thickness}:</span>
+							<span class="font-medium text-[var(--color-text-secondary)]">{thickness}:</span>
 							<input type="number" bind:value={size.width} min="1" max="24" step="0.5"
 								class="w-12 border border-[var(--color-border)] rounded px-1 py-0.5 text-xs" />"W ×
 							<input type="number" bind:value={size.length} min="12" max="192" step="6"
@@ -137,7 +137,7 @@
 		<button
 			onclick={handleReoptimize}
 			disabled={optimizing}
-			class="mt-3 bg-[var(--color-accent)] text-white px-3 py-1.5 rounded text-sm hover:bg-[var(--color-accent-hover)] disabled:opacity-50 transition-colors duration-150"
+			class="mt-3 bg-[var(--color-primary)] text-white px-3 py-1.5 rounded text-sm hover:bg-[var(--color-primary-hover)] disabled:opacity-50 transition-colors duration-150"
 		>
 			{optimizing ? 'Optimizing...' : 'Re-optimize'}
 		</button>
@@ -146,7 +146,7 @@
 	<!-- Sheet Diagrams -->
 	{#if result.sheets.length > 0}
 		<div>
-			<h4 class="text-sm font-medium text-[var(--color-foreground)] mb-2">Sheet Goods Layout</h4>
+			<h4 class="text-sm font-medium text-[var(--color-text)] mb-2">Sheet Goods Layout</h4>
 			{#each result.sheets as sheet, i}
 				<SheetDiagram layout={sheet} />
 			{/each}
@@ -156,7 +156,7 @@
 	<!-- Board Diagrams -->
 	{#if result.boards.length > 0}
 		<div>
-			<h4 class="text-sm font-medium text-[var(--color-foreground)] mb-2">Lumber Board Layout</h4>
+			<h4 class="text-sm font-medium text-[var(--color-text)] mb-2">Lumber Board Layout</h4>
 			{#each result.boards as board, i}
 				<BoardDiagram layout={board} />
 			{/each}
@@ -164,24 +164,24 @@
 	{/if}
 
 	<!-- Summary -->
-	<div class="bg-[var(--color-surface-muted)] border border-[var(--color-border)] rounded-lg p-4">
-		<h4 class="text-sm font-medium text-[var(--color-foreground)] mb-2">Optimization Summary</h4>
+	<div class="bg-[var(--color-surface-hover)] border border-[var(--color-border)] rounded-lg p-4">
+		<h4 class="text-sm font-medium text-[var(--color-text)] mb-2">Optimization Summary</h4>
 		<div class="grid grid-cols-2 md:grid-cols-4 gap-3 text-center">
 			<div>
-				<div class="text-lg font-bold text-[var(--color-foreground)]">{result.summary.total_sheets}</div>
-				<div class="text-xs text-[var(--color-foreground-muted)]">Sheets</div>
+				<div class="text-lg font-bold text-[var(--color-text)]">{result.summary.total_sheets}</div>
+				<div class="text-xs text-[var(--color-text-secondary)]">Sheets</div>
 			</div>
 			<div>
-				<div class="text-lg font-bold text-[var(--color-foreground)]">{result.summary.total_boards}</div>
-				<div class="text-xs text-[var(--color-foreground-muted)]">Boards</div>
+				<div class="text-lg font-bold text-[var(--color-text)]">{result.summary.total_boards}</div>
+				<div class="text-xs text-[var(--color-text-secondary)]">Boards</div>
 			</div>
 			<div>
-				<div class="text-lg font-bold text-[var(--color-accent)]">{result.summary.avg_waste_percent}%</div>
-				<div class="text-xs text-[var(--color-foreground-muted)]">Avg Waste</div>
+				<div class="text-lg font-bold text-[var(--color-primary)]">{result.summary.avg_waste_percent}%</div>
+				<div class="text-xs text-[var(--color-text-secondary)]">Avg Waste</div>
 			</div>
 			<div>
 				<div class="text-lg font-bold text-[#A16207]">{result.summary.total_spare_parts}</div>
-				<div class="text-xs text-[var(--color-foreground-muted)]">Spare Parts</div>
+				<div class="text-xs text-[var(--color-text-secondary)]">Spare Parts</div>
 			</div>
 		</div>
 	</div>

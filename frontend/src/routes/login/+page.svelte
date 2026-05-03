@@ -65,20 +65,20 @@
 <div class="min-h-screen bg-[var(--color-bg)] flex items-center justify-center px-4">
 	<div class="max-w-sm w-full">
 		<div class="text-center mb-8">
-			<h1 class="text-2xl text-[var(--color-primary)] font-['DM_Serif_Display',serif]">Kerf</h1>
-			<p class="text-sm text-[var(--color-foreground-muted)] mt-1">Sign in to download PDF reports and save projects</p>
+			<span class="text-2xl text-[var(--color-text)] font-semibold">kerf</span>
+			<p class="text-sm text-[var(--color-text-secondary)] mt-2">Sign in to get started</p>
 		</div>
 
 		{#if checkEmail}
 			<div class="bg-[var(--color-surface)] rounded-lg border border-[var(--color-border)] p-6 text-center">
-				<h2 class="text-lg font-medium text-[var(--color-foreground)] mb-2">Check your email</h2>
-				<p class="text-sm text-[var(--color-foreground-muted)]">We sent a verification link to <strong>{email}</strong>. Click the link to finish signing up.</p>
+				<h2 class="text-lg font-medium text-[var(--color-text)] mb-2">Check your email</h2>
+				<p class="text-sm text-[var(--color-text-secondary)]">We sent a verification link to <strong>{email}</strong>. Click the link to finish signing up.</p>
 			</div>
 		{:else}
 			<div class="bg-[var(--color-surface)] rounded-lg border border-[var(--color-border)] p-6 space-y-4">
 				<button
 					onclick={handleGoogleAuth}
-					class="w-full flex items-center justify-center gap-2 border border-[var(--color-border)] rounded-md px-4 py-2 text-sm text-[var(--color-foreground)] hover:bg-[var(--color-surface-muted)] transition-colors duration-150"
+					class="w-full flex items-center justify-center gap-2 border border-[var(--color-border)] rounded-md px-4 py-2 text-sm text-[var(--color-text)] hover:bg-[var(--color-surface-hover)] transition-colors duration-150"
 				>
 					<svg class="w-4 h-4" viewBox="0 0 24 24">
 						<path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z"/>
@@ -91,7 +91,7 @@
 
 				<div class="relative">
 					<div class="absolute inset-0 flex items-center"><div class="w-full border-t border-[var(--color-border)]"></div></div>
-					<div class="relative flex justify-center text-xs"><span class="bg-[var(--color-surface)] px-2 text-[var(--color-foreground-muted)]">or</span></div>
+					<div class="relative flex justify-center text-xs"><span class="bg-[var(--color-surface)] px-2 text-[var(--color-text-secondary)]">or</span></div>
 				</div>
 
 				<form onsubmit={(e) => { e.preventDefault(); handleEmailAuth(); }} class="space-y-3">
@@ -101,7 +101,7 @@
 							bind:value={email}
 							placeholder="Email"
 							required
-							class="w-full border border-[var(--color-border)] rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)] focus:border-transparent"
+							class="w-full border border-[var(--color-border)] rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)] focus:border-transparent"
 						/>
 					</div>
 					<div>
@@ -111,13 +111,13 @@
 							placeholder="Password"
 							required
 							minlength="6"
-							class="w-full border border-[var(--color-border)] rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)] focus:border-transparent"
+							class="w-full border border-[var(--color-border)] rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)] focus:border-transparent"
 						/>
 					</div>
 					<button
 						type="submit"
 						disabled={loading}
-						class="w-full bg-[var(--color-accent)] text-white py-2 px-4 rounded-md text-sm font-medium hover:bg-[var(--color-accent-hover)] disabled:opacity-50 transition-colors duration-150"
+						class="w-full bg-[var(--color-primary)] text-white py-2 px-4 rounded-md text-sm font-medium hover:bg-[var(--color-primary-hover)] disabled:opacity-50 transition-colors duration-150"
 					>
 						{loading ? 'Please wait...' : isSignUp ? 'Sign Up' : 'Sign In'}
 					</button>
@@ -127,18 +127,18 @@
 					<p class="text-sm text-[var(--color-destructive)]">{error}</p>
 				{/if}
 
-				<p class="text-center text-xs text-[var(--color-foreground-muted)]">
+				<p class="text-center text-xs text-[var(--color-text-secondary)]">
 					{#if isSignUp}
-						Already have an account? <button class="text-[var(--color-accent)] hover:underline" onclick={() => (isSignUp = false)}>Sign In</button>
+						Already have an account? <button class="text-[var(--color-primary)] hover:underline" onclick={() => (isSignUp = false)}>Sign In</button>
 					{:else}
-						Don't have an account? <button class="text-[var(--color-accent)] hover:underline" onclick={() => (isSignUp = true)}>Sign Up</button>
+						Don't have an account? <button class="text-[var(--color-primary)] hover:underline" onclick={() => (isSignUp = true)}>Sign Up</button>
 					{/if}
 				</p>
 			</div>
 		{/if}
 
 		<p class="text-center mt-4">
-			<a href="/" class="text-sm text-[var(--color-foreground-muted)] hover:text-[var(--color-foreground)] transition-colors duration-150">Back to app</a>
+			<a href="/" class="text-sm text-[var(--color-text-secondary)] hover:text-[var(--color-text)] transition-colors duration-150">Back to app</a>
 		</p>
 	</div>
 </div>

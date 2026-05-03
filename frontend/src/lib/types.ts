@@ -157,3 +157,28 @@ export interface OptimizeResponse {
 	board_sizes: Record<string, BoardSizeConfig>;
 	sheet_size: SheetSizeConfig;
 }
+
+export interface CatalogItem {
+	supplier_id: string;
+	supplier_name: string;
+	product_type: 'solid' | 'sheet';
+	species_or_name: string;
+	thickness: string;
+	price: number;
+	unit: string;
+	url: string | null;
+}
+
+export interface UserPreferences {
+	enabled_suppliers: string[];
+	default_species: string | null;
+	default_sheet_type: string | null;
+	default_units: DisplayUnits;
+}
+
+export interface Supplier {
+	supplier_id: string;
+	name: string;
+	base_url: string;
+	active: boolean;
+}

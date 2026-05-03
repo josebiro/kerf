@@ -1,4 +1,4 @@
-import type { UploadResponse, AnalyzeRequest, AnalyzeResponse, ProjectSummary, ProjectDetail, OptimizeRequest, OptimizeResponse } from './types';
+import type { UploadResponse, AnalyzeRequest, AnalyzeResponse, ProjectSummary, ProjectDetail, OptimizeRequest, OptimizeResponse, CatalogItem, UserPreferences, Supplier } from './types';
 import { get } from 'svelte/store';
 import { session } from './stores/auth';
 
@@ -163,5 +163,36 @@ export async function optimizeCuts(request: OptimizeRequest): Promise<OptimizeRe
 		const detail = await response.json().catch(() => ({ detail: 'Optimization failed' }));
 		throw new Error(detail.detail || 'Optimization failed');
 	}
+	return response.json();
+}
+
+export async function getCatalog(params?: { type?: string; search?: string }): Promise<CatalogItem[]> {
+	const searchParams = new URLSearchParams();
+	if (params?.type) searchParams.set('type', params.type);
+	if (params?.search) searchParams.set('search', params.search);
+	const qs = searchParams.toString();
+	const response = await fetch(`${BASE}/catalog${qs ? '?' + qs : ''}`, { headers: authHeaders() });
+	if (!response.ok) throw new Error('Failed to fetch catalog');
+	return response.json();
+}
+
+export async function getPreferences(): Promise<UserPreferences> {
+	const response = await fetch(`${BASE}/preferences`, { headers: authHeaders() });
+	if (!response.ok) throw new Error('Failed to fetch preferences');
+	return response.json();
+}
+
+export async function updatePreferences(prefs: UserPreferences): Promise<void> {
+	const response = await fetch(`${BASE}/preferences`, {
+		method: 'PUT',
+		headers: { 'Content-Type': 'application/json', ...authHeaders() },
+		body: JSON.stringify(prefs),
+	});
+	if (!response.ok) throw new Error('Failed to update preferences');
+}
+
+export async function getSuppliers(): Promise<Supplier[]> {
+	const response = await fetch(`${BASE}/suppliers`, { headers: authHeaders() });
+	if (!response.ok) throw new Error('Failed to fetch suppliers');
 	return response.json();
 }

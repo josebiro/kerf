@@ -423,3 +423,107 @@ class WoodworkersSourceSupplier(SupplierBase):
             return [Product(**item) for item in payload["products"]]
         except (KeyError, TypeError, json.JSONDecodeError):
             return None
+
+
+# ---------------------------------------------------------------------------
+# CrawlerBase implementation
+# ---------------------------------------------------------------------------
+
+from app.suppliers.crawler_base import CrawlerBase, CrawledProduct  # noqa: E402
+from datetime import datetime, timezone  # noqa: E402
+
+
+class WoodworkersSourceCrawler(CrawlerBase):
+    """Crawler for Woodworkers Source — scrapes or uses static fallback."""
+
+    supplier_id = "woodworkers_source"
+    supplier_name = "Woodworkers Source"
+    base_url = BASE_URL
+
+    def __init__(self, use_scraper: bool = True) -> None:
+        self._use_scraper = use_scraper
+
+    def crawl(self) -> list[CrawledProduct]:
+        now = datetime.now(timezone.utc)
+        products: list[CrawledProduct] = []
+
+        if self._use_scraper:
+            raw = self._scrape_live()
+            if raw:
+                return raw
+
+        # Static fallback
+        for species, thicknesses in SOLID_PRICES.items():
+            for thickness, price in thicknesses.items():
+                url = f"{BASE_URL}{LUMBER_PAGES.get(species, '')}" if species in LUMBER_PAGES else None
+                products.append(CrawledProduct(
+                    supplier_id=self.supplier_id,
+                    product_type="solid",
+                    species_or_name=species,
+                    thickness=thickness,
+                    price=price,
+                    unit="board_foot",
+                    url=url,
+                    crawled_at=now,
+                ))
+
+        for product_type, thicknesses in SHEET_PRICES.items():
+            for thickness, price in thicknesses.items():
+                url = f"{BASE_URL}{PLYWOOD_PAGES.get(product_type, '')}" if product_type in PLYWOOD_PAGES else None
+                products.append(CrawledProduct(
+                    supplier_id=self.supplier_id,
+                    product_type="sheet",
+                    species_or_name=product_type,
+                    thickness=thickness,
+                    price=price,
+                    unit="sheet",
+                    url=url,
+                    crawled_at=now,
+                ))
+
+        return products
+
+    def _scrape_live(self) -> list[CrawledProduct]:
+        """Attempt live scraping, return empty list on failure."""
+        now = datetime.now(timezone.utc)
+        urls = [BASE_URL + path for path in LUMBER_PAGES.values()]
+        urls += [BASE_URL + path for path in PLYWOOD_PAGES.values()]
+
+        try:
+            raw = scrape_pages(urls, BASE_URL)
+        except Exception as exc:
+            logger.warning("scrape_pages failed: %s", exc)
+            return []
+
+        if not raw:
+            return []
+
+        products: list[CrawledProduct] = []
+        for item in raw:
+            name = item.get("name", "")
+            price = item.get("price")
+            unit = item.get("unit", "BF")
+            thickness = item.get("thickness")
+            url = item.get("url")
+
+            if price is None or price <= 0:
+                continue
+
+            category = "solid" if unit == "BF" else "sheet"
+            species = _extract_species(name, category)
+            thick = thickness or ""
+            if category == "sheet" and thick and not thick.endswith('"'):
+                thick = thick + '"'
+
+            products.append(CrawledProduct(
+                supplier_id=self.supplier_id,
+                product_type=category,
+                species_or_name=species,
+                thickness=thick,
+                price=price,
+                unit="board_foot" if unit == "BF" else "sheet",
+                url=url,
+                crawled_at=now,
+            ))
+
+        return products

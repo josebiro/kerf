@@ -46,56 +46,53 @@
 	}
 </script>
 
-<div class="min-h-screen bg-[var(--color-bg)]">
-	<header class="bg-[var(--color-surface)] border-b border-[var(--color-border)] px-6 py-4">
-		<div class="max-w-6xl mx-auto flex items-center justify-between">
-			<h1 class="text-xl text-[var(--color-primary)] font-['DM_Serif_Display',serif]">Kerf</h1>
-			<div class="flex items-center gap-4">
-				<a href="/" class="text-sm text-[var(--color-accent)] hover:text-[var(--color-accent-hover)] transition-colors duration-150">New Project</a>
-				<button onclick={() => { import('$lib/supabase').then(m => m.supabase.auth.signOut().then(() => goto('/'))); }} class="text-sm text-[var(--color-foreground-muted)] hover:text-[var(--color-foreground)] transition-colors duration-150">Sign Out</button>
-			</div>
+<main class="max-w-6xl mx-auto px-6 py-8">
+	<div class="flex items-center justify-between mb-6">
+		<h2 class="text-lg font-semibold text-[var(--color-text)]">Projects</h2>
+		<a href="/" class="bg-[var(--color-primary)] text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-[var(--color-primary-hover)] transition-colors duration-150">+ New Project</a>
+	</div>
+
+	{#if loading}
+		<p class="text-[var(--color-text-secondary)]">Loading projects...</p>
+	{:else if error}
+		<p class="text-[var(--color-destructive)]">{error}</p>
+	{:else if projects.length === 0}
+		<div class="text-center py-16 text-[var(--color-text-secondary)]">
+			<p class="text-lg mb-2">No saved projects yet</p>
+			<p class="text-sm">Upload a 3MF file and click "Save Project" to get started.</p>
+			<a href="/" class="inline-block mt-4 text-[var(--color-primary)] hover:text-[var(--color-primary-hover)] text-sm transition-colors duration-150">Upload a file</a>
 		</div>
-	</header>
-
-	<main class="max-w-6xl mx-auto px-6 py-8">
-		<h2 class="text-lg font-medium text-[var(--color-foreground)] mb-6">My Projects</h2>
-
-		{#if loading}
-			<p class="text-[var(--color-foreground-muted)]">Loading projects...</p>
-		{:else if error}
-			<p class="text-[var(--color-destructive)]">{error}</p>
-		{:else if projects.length === 0}
-			<div class="text-center py-16 text-[var(--color-foreground-muted)]">
-				<p class="text-lg mb-2">No saved projects yet</p>
-				<p class="text-sm">Upload a 3MF file and click "Save Project" to get started.</p>
-				<a href="/" class="inline-block mt-4 text-[var(--color-accent)] hover:text-[var(--color-accent-hover)] text-sm transition-colors duration-150">Upload a file</a>
-			</div>
-		{:else}
-			<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-				{#each projects as project}
-					<div class="bg-[var(--color-surface)] rounded-lg border border-[var(--color-border)] overflow-hidden hover:shadow-lg transition-shadow duration-150">
-						<button onclick={() => goto(`/?project=${project.id}`)} class="w-full text-left">
-							{#if project.thumbnail_url}
-								<img src={project.thumbnail_url} alt={project.name} class="w-full h-40 object-cover bg-[var(--color-surface-muted)]" />
-							{:else}
-								<div class="w-full h-40 bg-[var(--color-surface-muted)] flex items-center justify-center text-[var(--color-foreground-muted)] opacity-40 text-sm">No preview</div>
-							{/if}
-							<div class="p-4">
-								<h3 class="font-medium text-[var(--color-foreground)] truncate">{project.name}</h3>
-								<p class="text-xs text-[var(--color-foreground-muted)] mt-1">{formatDate(project.created_at)}</p>
-								<div class="flex gap-3 mt-2 text-xs text-[var(--color-foreground-muted)]">
-									<span>{project.part_count} parts</span>
-									<span>{project.solid_species}</span>
-									<span>{formatCost(project.estimated_cost)}</span>
-								</div>
+	{:else}
+		<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+			{#each projects as project}
+				<div class="bg-[var(--color-surface)] rounded-lg border border-[var(--color-border)] overflow-hidden hover:shadow-lg transition-shadow duration-150">
+					<button onclick={() => goto(`/?project=${project.id}`)} class="w-full text-left">
+						{#if project.thumbnail_url}
+							<img src={project.thumbnail_url} alt={project.name} class="w-full h-40 object-cover bg-[var(--color-bg-deep)]" />
+						{:else}
+							<div class="w-full h-40 bg-[var(--color-bg-deep)] flex items-center justify-center text-[var(--color-text-secondary)] opacity-40 text-sm">No preview</div>
+						{/if}
+						<div class="p-4">
+							<h3 class="font-medium text-[var(--color-text)] truncate">{project.name}</h3>
+							<p class="text-xs text-[var(--color-text-secondary)] mt-1">{formatDate(project.created_at)}</p>
+							<div class="flex gap-3 mt-2 text-xs text-[var(--color-text-secondary)]">
+								<span>{project.part_count} parts</span>
+								<span>{project.solid_species}</span>
+								<span>{formatCost(project.estimated_cost)}</span>
 							</div>
-						</button>
-						<div class="px-4 pb-3">
-							<button onclick={() => handleDelete(project.id, project.name)} class="text-xs text-[var(--color-destructive)] hover:opacity-80 transition-colors duration-150">Delete</button>
 						</div>
+					</button>
+					<div class="px-4 pb-3">
+						<button onclick={() => handleDelete(project.id, project.name)} class="text-xs text-[var(--color-destructive)] hover:opacity-80 transition-colors duration-150">Delete</button>
 					</div>
-				{/each}
-			</div>
-		{/if}
-	</main>
-</div>
+				</div>
+			{/each}
+			<a href="/" class="bg-[var(--color-surface)] rounded-lg border border-dashed border-[var(--color-border)] flex items-center justify-center min-h-[240px] hover:border-[var(--color-primary)]/50 transition-all duration-150">
+				<div class="text-center">
+					<div class="text-[var(--color-primary)] text-2xl mb-1">+</div>
+					<div class="text-sm text-[var(--color-text-muted)]">New Project</div>
+				</div>
+			</a>
+		</div>
+	{/if}
+</main>

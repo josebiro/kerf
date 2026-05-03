@@ -12,26 +12,26 @@
 	const svgHeight = $derived(layout.length * scale);
 
 	function partColor(isspare: boolean): string {
-		return isspare ? '#92702a' : '#3d7a4a';
+		return isspare ? 'rgba(129, 140, 248, 0.2)' : 'rgba(99, 102, 241, 0.3)';
 	}
 
 	function partStroke(isspare: boolean): string {
-		return isspare ? '#c4a34d' : '#5aad6b';
+		return isspare ? '#818cf8' : '#6366f1';
 	}
 </script>
 
 <div class="mb-4">
 	<div class="flex justify-between items-center mb-1">
-		<span class="text-sm font-medium text-[var(--color-foreground)]">{layout.material} — {layout.width}" × {layout.length}"</span>
-		<span class="text-xs text-[var(--color-accent)] font-medium">Waste: {layout.waste_percent}%</span>
+		<span class="text-sm font-medium text-[var(--color-text)]">{layout.material} — {layout.width}" × {layout.length}"</span>
+		<span class="text-xs text-[var(--color-primary)] font-medium">Waste: {layout.waste_percent}%</span>
 	</div>
 	<svg
 		viewBox="0 0 {svgWidth} {svgHeight}"
-		class="w-full border border-[var(--color-border)] rounded bg-[var(--color-surface-muted)]"
-		style="max-height: 200px;"
+		class="w-full border border-[var(--color-border)] rounded"
+		style="max-height: 200px; background: #0f1219;"
 	>
 		<!-- Sheet background -->
-		<rect x="0" y="0" width={svgWidth} height={svgHeight} fill="#e5e7eb" />
+		<rect x="0" y="0" width={svgWidth} height={svgHeight} fill="#1e293b" stroke="#2a3040" stroke-width="1" />
 
 		<!-- Parts -->
 		{#each layout.placements as p}
@@ -50,7 +50,7 @@
 				x={(p.x + p.width / 2) * scale}
 				y={(p.y + p.height / 2) * scale - 4}
 				text-anchor="middle"
-				fill="white"
+				fill="#e2e8f0"
 				font-size="9"
 				font-weight="bold"
 			>
@@ -60,7 +60,7 @@
 				x={(p.x + p.width / 2) * scale}
 				y={(p.y + p.height / 2) * scale + 8}
 				text-anchor="middle"
-				fill="rgba(255,255,255,0.7)"
+				fill="rgba(226,232,240,0.7)"
 				font-size="7"
 			>
 				{p.width.toFixed(1)}" × {p.height.toFixed(1)}"
