@@ -1,8 +1,23 @@
-:80 {
-	handle /api/* {
-		reverse_proxy backend:8000
+{
+	admin off
+	auto_https off
+	log {
+		output stdout
+		format console
 	}
+}
+
+:8000 {
+	# Allow large 3MF / STEP uploads
+	request_body {
+		max_size 100MB
+	}
+
+	handle /api/* {
+		reverse_proxy 127.0.0.1:8001
+	}
+
 	handle {
-		reverse_proxy frontend:3000
+		reverse_proxy 127.0.0.1:3000
 	}
 }

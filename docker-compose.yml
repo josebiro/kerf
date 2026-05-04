@@ -1,32 +1,22 @@
 services:
-  caddy:
-    image: caddy:2-alpine
-    ports:
-      - "8080:80"
-    volumes:
-      - ./Caddyfile:/etc/caddy/Caddyfile
-    depends_on:
-      - backend
-      - frontend
-
-  backend:
-    build: ./backend
-    env_file: ./backend/.env
-    environment:
-      - PYTHONUNBUFFERED=1
-    volumes:
-      - backend-sessions:/app/sessions
-      - backend-cache:/app/cache
-
-  frontend:
+  app:
     build:
-      context: ./frontend
+      context: .
       args:
         PUBLIC_SUPABASE_URL: ${PUBLIC_SUPABASE_URL}
         PUBLIC_SUPABASE_ANON_KEY: ${PUBLIC_SUPABASE_ANON_KEY}
+        PUBLIC_API_BASE_URL: ${PUBLIC_API_BASE_URL}
+    image: kerf
+    env_file: ./backend/.env
     environment:
-      - ORIGIN=http://localhost:8080
+      - PYTHONUNBUFFERED=1
+      - ORIGIN=http://localhost:8000
+    ports:
+      - "8000:8000"
+    volumes:
+      - app-sessions:/app/backend/sessions
+      - app-cache:/app/backend/cache
 
 volumes:
-  backend-sessions:
-  backend-cache:
+  app-sessions:
+  app-cache:
