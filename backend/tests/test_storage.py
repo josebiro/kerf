@@ -1,5 +1,5 @@
-import pytest
 from unittest.mock import patch, MagicMock
+
 from app.storage import upload_file, delete_files, get_signed_url
 
 
@@ -8,8 +8,7 @@ class TestUploadFile:
         mock_client = MagicMock()
         mock_client.storage.from_.return_value.upload.return_value = None
 
-        with patch("app.storage.get_supabase_client", return_value=mock_client):
-            upload_file("user-1/proj-1/model.3mf", b"file-content", "application/octet-stream")
+        upload_file(mock_client, "user-1/proj-1/model.3mf", b"file-content", "application/octet-stream")
 
         mock_client.storage.from_.assert_called_with("projects")
         mock_client.storage.from_.return_value.upload.assert_called_once()
@@ -25,7 +24,7 @@ class TestGetSignedUrl:
             "signedURL": "https://example.com/signed"
         }
 
-        with patch("app.storage.get_supabase_client", return_value=mock_client):
+        with patch("app.storage.get_admin_client", return_value=mock_client):
             url = get_signed_url("user-1/proj-1/model.3mf")
 
         assert url == "https://example.com/signed"
@@ -34,7 +33,7 @@ class TestGetSignedUrl:
         mock_client = MagicMock()
         mock_client.storage.from_.return_value.create_signed_url.side_effect = Exception("fail")
 
-        with patch("app.storage.get_supabase_client", return_value=mock_client):
+        with patch("app.storage.get_admin_client", return_value=mock_client):
             url = get_signed_url("bad/path")
 
         assert url is None
@@ -45,8 +44,7 @@ class TestDeleteFiles:
         mock_client = MagicMock()
         mock_client.storage.from_.return_value.remove.return_value = None
 
-        with patch("app.storage.get_supabase_client", return_value=mock_client):
-            delete_files(["user-1/proj-1/model.3mf", "user-1/proj-1/thumbnail.png"])
+        delete_files(mock_client, ["user-1/proj-1/model.3mf", "user-1/proj-1/thumbnail.png"])
 
         mock_client.storage.from_.return_value.remove.assert_called_once_with(
             ["user-1/proj-1/model.3mf", "user-1/proj-1/thumbnail.png"]

@@ -190,7 +190,7 @@
 
 				// Restore a local session so analyze/report endpoints work
 				status = 'Restoring session...';
-				const restored = await restoreSession(project.file_url, project.filename);
+				const restored = await restoreSession(project.id);
 				uploadResult = restored;
 				optimizeResult = project.optimize_result;
 				loadedProjectId = project.id;

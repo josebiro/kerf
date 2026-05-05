@@ -13,11 +13,11 @@ function authHeaders(): Record<string, string> {
 	return headers;
 }
 
-export async function restoreSession(fileUrl: string, filename: string): Promise<UploadResponse> {
+export async function restoreSession(projectId: string): Promise<UploadResponse> {
 	const response = await fetch(`${BASE}/restore-session`, {
 		method: 'POST',
 		headers: { 'Content-Type': 'application/json', ...authHeaders() },
-		body: JSON.stringify({ file_url: fileUrl, filename }),
+		body: JSON.stringify({ project_id: projectId }),
 	});
 	if (!response.ok) {
 		const detail = await response.json().catch(() => ({ detail: 'Failed to restore session' }));

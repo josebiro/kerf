@@ -118,3 +118,54 @@ def test_parse_invalid_file_raises(tmp_path):
     path.write_text("not a zip file")
     with pytest.raises(ValueError, match="Invalid 3MF"):
         parse_3mf(path)
+
+
+def test_parse_rejects_billion_laughs(tmp_path):
+    """A 3MF whose model XML contains a billion-laughs entity expansion
+    must be rejected without expanding the entities (defusedxml guard)."""
+    import io
+    import zipfile
+
+    malicious_xml = """<?xml version="1.0"?>
+<!DOCTYPE lolz [
+  <!ENTITY lol "lol">
+  <!ENTITY lol1 "&lol;&lol;&lol;&lol;&lol;&lol;&lol;&lol;&lol;&lol;">
+  <!ENTITY lol2 "&lol1;&lol1;&lol1;&lol1;&lol1;&lol1;&lol1;&lol1;&lol1;&lol1;">
+  <!ENTITY lol3 "&lol2;&lol2;&lol2;&lol2;&lol2;&lol2;&lol2;&lol2;&lol2;&lol2;">
+]>
+<model unit="millimeter" xmlns="http://schemas.microsoft.com/3dmanufacturing/core/2015/02">
+  <name>&lol3;</name>
+</model>"""
+
+    path = tmp_path / "billion_laughs.3mf"
+    buf = io.BytesIO()
+    with zipfile.ZipFile(buf, "w") as zf:
+        zf.writestr("3D/3dmodel.model", malicious_xml)
+    path.write_bytes(buf.getvalue())
+
+    with pytest.raises(ValueError):
+        parse_3mf(path)
+
+
+def test_parse_rejects_external_entity(tmp_path):
+    """A 3MF whose model XML references an external SYSTEM entity
+    (XXE) must be rejected by defusedxml."""
+    import io
+    import zipfile
+
+    malicious_xml = """<?xml version="1.0"?>
+<!DOCTYPE foo [
+  <!ENTITY xxe SYSTEM "file:///etc/passwd">
+]>
+<model unit="millimeter" xmlns="http://schemas.microsoft.com/3dmanufacturing/core/2015/02">
+  <name>&xxe;</name>
+</model>"""
+
+    path = tmp_path / "xxe.3mf"
+    buf = io.BytesIO()
+    with zipfile.ZipFile(buf, "w") as zf:
+        zf.writestr("3D/3dmodel.model", malicious_xml)
+    path.write_bytes(buf.getvalue())
+
+    with pytest.raises(ValueError):
+        parse_3mf(path)
