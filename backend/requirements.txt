@@ -14,4 +14,4 @@ python-dotenv==1.2.2
 PyJWT==2.10.1
 defusedxml==0.7.1
 slowapi==0.1.9
-Pillow==11.1.0
+Pillow==12.2.0
