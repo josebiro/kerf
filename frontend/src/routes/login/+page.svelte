@@ -3,6 +3,7 @@
 	import { isAuthenticated } from '$lib/stores/auth';
 	import { goto } from '$app/navigation';
 	import { page } from '$app/state';
+	import { safeRedirect } from '$lib/safeRedirect';
 
 	let email = $state('');
 	let password = $state('');
@@ -11,7 +12,7 @@
 	let isSignUp = $state(false);
 	let checkEmail = $state(false);
 
-	const redirectTo = $derived(page.url.searchParams.get('redirect') || '/');
+	const redirectTo = $derived(safeRedirect(page.url.searchParams.get('redirect')));
 
 	$effect(() => {
 		if ($isAuthenticated) {

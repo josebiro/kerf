@@ -1,7 +1,7 @@
 import pytest
 from pathlib import Path
 from fastapi.testclient import TestClient
-from unittest.mock import patch
+from unittest.mock import patch, MagicMock
 from tests.conftest import build_3mf_bytes
 from app.auth import require_user
 
@@ -48,11 +48,50 @@ def auth_client(tmp_path):
     )
 
     async def mock_require_user():
-        return {"id": "test-user-123", "email": "test@example.com"}
+        return {"id": "test-user-123", "email": "test@example.com", "token": "test-token"}
 
     app.dependency_overrides[require_user] = mock_require_user
 
-    yield TestClient(app)
+    # Stub the user-scoped Supabase client; tests mock the DB/storage
+    # functions themselves so the client is never used substantively.
+    with patch("app.main.get_user_client", return_value=MagicMock()):
+        yield TestClient(app)
+
+    session_mod.DEFAULT_BASE_DIR = original_base_dir
+    registry_mod._instances.clear()
+    registry_mod._instances.update(original_instances)
+    app.dependency_overrides.clear()
+
+
+@pytest.fixture
+def auth_as(tmp_path):
+    """Yields a function ``as_user(user_id) -> TestClient`` that rebinds
+    the global auth override for the test app. The override is global per
+    app, so calling ``as_user`` mid-test changes the identity of all
+    subsequent requests through the returned client."""
+    from app import session as session_mod
+    import app.suppliers.registry as registry_mod
+    from app.suppliers.woodworkers_source import WoodworkersSourceSupplier
+    from app.main import app
+    from app.auth import require_user
+
+    original_base_dir = session_mod.DEFAULT_BASE_DIR
+    session_mod.DEFAULT_BASE_DIR = tmp_path
+    original_instances = registry_mod._instances.copy()
+    registry_mod._instances["woodworkers_source"] = WoodworkersSourceSupplier(
+        cache_dir=None, use_scraper=False
+    )
+
+    client = TestClient(app)
+
+    def as_user(user_id: str, email: str = "x@example.com") -> TestClient:
+        async def mock_require_user():
+            return {"id": user_id, "email": email, "token": f"token-{user_id}"}
+        app.dependency_overrides[require_user] = mock_require_user
+        return client
+
+    with patch("app.main.get_user_client", return_value=MagicMock()):
+        yield as_user
 
     session_mod.DEFAULT_BASE_DIR = original_base_dir
     registry_mod._instances.clear()
@@ -61,9 +100,9 @@ def auth_client(tmp_path):
 
 
 class TestUpload:
-    def test_upload_valid_3mf(self, client):
+    def test_upload_valid_3mf(self, auth_client):
         data = build_3mf_bytes()
-        response = client.post("/api/upload", files={"file": ("test.3mf", data, "application/octet-stream")})
+        response = auth_client.post("/api/upload", files={"file": ("test.3mf", data, "application/octet-stream")})
         assert response.status_code == 200
         body = response.json()
         assert "session_id" in body
@@ -71,13 +110,13 @@ class TestUpload:
         assert len(body["parts_preview"]) == 1
         assert body["parts_preview"][0]["name"] == "TestBox"
 
-    def test_upload_invalid_file(self, client):
-        response = client.post("/api/upload", files={"file": ("test.3mf", b"not a zip", "application/octet-stream")})
+    def test_upload_invalid_file(self, auth_client):
+        response = auth_client.post("/api/upload", files={"file": ("test.3mf", b"not a zip", "application/octet-stream")})
         assert response.status_code == 400
 
-    def test_upload_wrong_extension(self, client):
+    def test_upload_wrong_extension(self, auth_client):
         data = build_3mf_bytes()
-        response = client.post("/api/upload", files={"file": ("test.stl", data, "application/octet-stream")})
+        response = auth_client.post("/api/upload", files={"file": ("test.stl", data, "application/octet-stream")})
         assert response.status_code == 400
 
 
@@ -87,9 +126,9 @@ class TestAnalyze:
         resp = client.post("/api/upload", files={"file": ("test.3mf", data, "application/octet-stream")})
         return resp.json()["session_id"]
 
-    def test_analyze_returns_parts(self, client):
-        session_id = self._upload(client)
-        response = client.post("/api/analyze", json={
+    def test_analyze_returns_parts(self, auth_client):
+        session_id = self._upload(auth_client)
+        response = auth_client.post("/api/analyze", json={
             "session_id": session_id, "solid_species": "Red Oak", "sheet_type": "Baltic Birch"})
         assert response.status_code == 200
         body = response.json()
@@ -97,29 +136,29 @@ class TestAnalyze:
         assert body["parts"][0]["name"] == "TestBox"
         assert body["parts"][0]["board_type"] == "solid"
 
-    def test_analyze_returns_shopping_list(self, client):
-        session_id = self._upload(client)
-        response = client.post("/api/analyze", json={
+    def test_analyze_returns_shopping_list(self, auth_client):
+        session_id = self._upload(auth_client)
+        response = auth_client.post("/api/analyze", json={
             "session_id": session_id, "solid_species": "Red Oak", "sheet_type": "Baltic Birch"})
         body = response.json()
         assert len(body["shopping_list"]) > 0
 
-    def test_analyze_returns_cost_estimate(self, client):
-        session_id = self._upload(client)
-        response = client.post("/api/analyze", json={
+    def test_analyze_returns_cost_estimate(self, auth_client):
+        session_id = self._upload(auth_client)
+        response = auth_client.post("/api/analyze", json={
             "session_id": session_id, "solid_species": "Red Oak", "sheet_type": "Baltic Birch"})
         body = response.json()
         assert "cost_estimate" in body
         assert "total" in body["cost_estimate"]
 
-    def test_analyze_invalid_session(self, client):
-        response = client.post("/api/analyze", json={
+    def test_analyze_invalid_session(self, auth_client):
+        response = auth_client.post("/api/analyze", json={
             "session_id": "nonexistent", "solid_species": "Red Oak", "sheet_type": "Baltic Birch"})
         assert response.status_code == 404
 
-    def test_analyze_with_display_units_mm(self, client):
-        session_id = self._upload(client)
-        response = client.post("/api/analyze", json={
+    def test_analyze_with_display_units_mm(self, auth_client):
+        session_id = self._upload(auth_client)
+        response = auth_client.post("/api/analyze", json={
             "session_id": session_id, "solid_species": "Red Oak", "sheet_type": "Baltic Birch", "display_units": "mm"})
         assert response.status_code == 200
         body = response.json()
@@ -127,26 +166,26 @@ class TestAnalyze:
 
 
 class TestFileServing:
-    def test_serve_uploaded_file(self, client):
+    def test_serve_uploaded_file(self, auth_client):
         data = build_3mf_bytes()
-        resp = client.post("/api/upload", files={"file": ("test.3mf", data, "application/octet-stream")})
+        resp = auth_client.post("/api/upload", files={"file": ("test.3mf", data, "application/octet-stream")})
         file_url = resp.json()["file_url"]
-        response = client.get(file_url)
+        response = auth_client.get(file_url)
         assert response.status_code == 200
 
-    def test_serve_missing_file_404(self, client):
-        response = client.get("/api/files/nonexistent/test.3mf")
+    def test_serve_missing_file_404(self, auth_client):
+        response = auth_client.get("/api/files/nonexistent/test.3mf")
         assert response.status_code == 404
 
 
 class TestCatalogEndpoints:
-    def test_get_species(self, client):
-        response = client.get("/api/species")
+    def test_get_species(self, auth_client):
+        response = auth_client.get("/api/species")
         assert response.status_code == 200
         assert "Red Oak" in response.json()
 
-    def test_get_sheet_types(self, client):
-        response = client.get("/api/sheet-types")
+    def test_get_sheet_types(self, auth_client):
+        response = auth_client.get("/api/sheet-types")
         assert response.status_code == 200
         assert "Baltic Birch" in response.json()
 
@@ -159,9 +198,9 @@ class TestReport:
 
     def test_report_requires_auth(self, client):
         """Report endpoint returns 401 without authentication."""
-        session_id = self._upload(client)
+        # No upload — that also requires auth. Hit the endpoint directly.
         response = client.post("/api/report", json={
-            "session_id": session_id,
+            "session_id": "any",
             "solid_species": "Red Oak",
             "sheet_type": "Baltic Birch",
         })
@@ -197,6 +236,77 @@ class TestReport:
             "sheet_type": "Baltic Birch",
         })
         assert response.status_code == 404
+
+
+class TestSessionIsolation:
+    """CRITICAL-1 regression coverage: a session belongs to its creator,
+    and another authenticated user may not access it."""
+
+    def _upload(self, client) -> str:
+        data = build_3mf_bytes()
+        resp = client.post(
+            "/api/upload",
+            files={"file": ("test.3mf", data, "application/octet-stream")},
+        )
+        assert resp.status_code == 200
+        return resp.json()["session_id"]
+
+    def test_other_user_cannot_analyze_session(self, auth_as):
+        session_id = self._upload(auth_as("user-a"))
+        client_b = auth_as("user-b")
+        resp = client_b.post(
+            "/api/analyze",
+            json={
+                "session_id": session_id,
+                "solid_species": "Red Oak",
+                "sheet_type": "Baltic Birch",
+            },
+        )
+        assert resp.status_code == 404
+
+    def test_other_user_cannot_serve_session_file(self, auth_as):
+        session_id = self._upload(auth_as("user-a"))
+        client_b = auth_as("user-b")
+        resp = client_b.get(f"/api/files/{session_id}/model.3mf")
+        assert resp.status_code == 404
+
+    def test_other_user_cannot_report_from_session(self, auth_as):
+        session_id = self._upload(auth_as("user-a"))
+        client_b = auth_as("user-b")
+        resp = client_b.post(
+            "/api/report",
+            json={
+                "session_id": session_id,
+                "solid_species": "Red Oak",
+                "sheet_type": "Baltic Birch",
+            },
+        )
+        assert resp.status_code == 404
+
+    def test_traversal_session_id_returns_404(self, auth_client):
+        resp = auth_client.post(
+            "/api/analyze",
+            json={
+                "session_id": "../../etc",
+                "solid_species": "Red Oak",
+                "sheet_type": "Baltic Birch",
+            },
+        )
+        assert resp.status_code == 404
+
+    def test_traversal_filename_returns_400_or_404(self, auth_client):
+        data = build_3mf_bytes()
+        resp = auth_client.post(
+            "/api/upload",
+            files={"file": ("test.3mf", data, "application/octet-stream")},
+        )
+        session_id = resp.json()["session_id"]
+        # Use percent-encoded slashes so the literal traversal segment
+        # reaches the handler instead of being normalised by the URL parser.
+        resp = auth_client.get(f"/api/files/{session_id}/..%2F..%2Fpasswd")
+        # Either 400 (filename rejected) or 404 (path resolution failed) is
+        # acceptable; what we MUST NOT see is 200 with file contents.
+        assert resp.status_code in (400, 404)
 
 
 class TestProjects:
@@ -264,7 +374,10 @@ class TestProjects:
             "solid_species": "Red Oak", "sheet_type": "Baltic Birch",
             "all_solid": False, "display_units": "in",
             "analysis_result": {"parts": [], "shopping_list": [], "cost_estimate": {"items": []}, "display_units": "in"},
-            "file_path": "u/p/model.3mf", "thumbnail_path": "u/p/thumb.png",
+            # Paths must use the {user_id}/{project_id}/ prefix; the handler
+            # rejects rows that don't, as defence in depth against tampering.
+            "file_path": "test-user-123/p1/model.3mf",
+            "thumbnail_path": "test-user-123/p1/thumb.png",
             "created_at": "2026-04-28T00:00:00", "updated_at": "2026-04-28T00:00:00",
         }
         mock_signed.return_value = "https://signed-url"
@@ -283,10 +396,32 @@ class TestProjects:
     @patch("app.main.delete_files")
     @patch("app.main.delete_project")
     def test_delete_project(self, mock_del_db, mock_del_files, mock_get, auth_client):
+        # File paths must use the {user_id}/{project_id}/ prefix so the
+        # ownership-prefix check passes.
         mock_get.return_value = {
-            "id": "p1", "file_path": "u/p/model.3mf", "thumbnail_path": "u/p/thumb.png"
+            "id": "p1",
+            "file_path": "test-user-123/p1/model.3mf",
+            "thumbnail_path": "test-user-123/p1/thumb.png",
         }
         response = auth_client.delete("/api/projects/p1")
         assert response.status_code == 204
         mock_del_files.assert_called_once()
+        mock_del_db.assert_called_once()
+
+    @patch("app.main.get_project")
+    @patch("app.main.delete_files")
+    @patch("app.main.delete_project")
+    def test_delete_project_skips_paths_outside_prefix(
+        self, mock_del_db, mock_del_files, mock_get, auth_client,
+    ):
+        """A row whose file_path is outside the user's prefix must NOT be
+        passed to storage.remove. Defends against tampered DB rows."""
+        mock_get.return_value = {
+            "id": "p1",
+            "file_path": "other-user/other-proj/model.3mf",
+            "thumbnail_path": "other-user/other-proj/thumb.png",
+        }
+        response = auth_client.delete("/api/projects/p1")
+        assert response.status_code == 204
+        mock_del_files.assert_not_called()
         mock_del_db.assert_called_once()

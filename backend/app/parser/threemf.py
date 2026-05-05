@@ -1,11 +1,17 @@
 import zipfile
-import xml.etree.ElementTree as ET
 from dataclasses import dataclass
 from pathlib import Path
 
+import defusedxml.ElementTree as ET
 import numpy as np
 
 from app.units import convert_from_3mf_unit
+
+# Hard caps on parser inputs to bound memory and CPU.
+# A legitimate 3MF model.xml is well under 50 MB; the ZIP itself
+# is capped by Caddy at 100 MB.
+MAX_MODEL_XML_BYTES = 50 * 1024 * 1024
+MAX_ZIP_TOTAL_BYTES = 200 * 1024 * 1024
 
 _NS = {"m": "http://schemas.microsoft.com/3dmanufacturing/core/2015/02"}
 
@@ -44,11 +50,23 @@ def parse_3mf(file_path: Path) -> ParseResult:
     """Parse a 3MF file and return extracted bodies with vertices in mm."""
     try:
         with zipfile.ZipFile(file_path, "r") as zf:
+            total_uncompressed = sum(info.file_size for info in zf.infolist())
+            if total_uncompressed > MAX_ZIP_TOTAL_BYTES:
+                raise ValueError("3MF archive exceeds maximum uncompressed size")
+            try:
+                info = zf.getinfo("3D/3dmodel.model")
+            except KeyError as e:
+                raise ValueError(f"Invalid 3MF file: {e}") from e
+            if info.file_size > MAX_MODEL_XML_BYTES:
+                raise ValueError("3MF model XML exceeds maximum size")
             model_xml = zf.read("3D/3dmodel.model")
-    except (zipfile.BadZipFile, KeyError) as e:
+    except zipfile.BadZipFile as e:
         raise ValueError(f"Invalid 3MF file: {e}") from e
 
-    root = ET.fromstring(model_xml)
+    try:
+        root = ET.fromstring(model_xml)
+    except ET.ParseError as e:
+        raise ValueError(f"Invalid 3MF model XML: {e}") from e
     unit = root.get("unit", "millimeter")
 
     # Build object lookup: id -> (name, vertices, triangle_count)

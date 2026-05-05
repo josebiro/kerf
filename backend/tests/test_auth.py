@@ -32,5 +32,17 @@ def test_sheet_types_requires_auth():
 
 
 def test_restore_session_requires_auth():
-    response = client.post("/api/restore-session", json={"file_url": "http://example.com/test.3mf"})
+    response = client.post("/api/restore-session", json={"project_id": "any"})
     assert response.status_code == 401
+
+
+def test_restore_session_rejects_legacy_file_url_payload():
+    """The endpoint no longer accepts file_url (SSRF protection); legacy
+    callers must fail validation, not be silently coerced."""
+    response = client.post(
+        "/api/restore-session",
+        json={"file_url": "http://internal.local/secret"},
+    )
+    # 401 (auth first) or 422 (schema) are both acceptable; what we MUST
+    # NOT see is the request reaching network code.
+    assert response.status_code in (401, 422)
