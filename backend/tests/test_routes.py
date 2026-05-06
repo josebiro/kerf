@@ -52,9 +52,10 @@ def auth_client(tmp_path):
 
     app.dependency_overrides[require_user] = mock_require_user
 
-    # Stub the user-scoped Supabase client; tests mock the DB/storage
-    # functions themselves so the client is never used substantively.
-    with patch("app.main.get_user_client", return_value=MagicMock()):
+    # Stub both Supabase clients; tests mock the DB/storage functions
+    # themselves so the underlying clients are never used substantively.
+    with patch("app.main.get_user_client", return_value=MagicMock()), \
+         patch("app.main.get_admin_client", return_value=MagicMock()):
         yield TestClient(app)
 
     session_mod.DEFAULT_BASE_DIR = original_base_dir
@@ -90,7 +91,8 @@ def auth_as(tmp_path):
         app.dependency_overrides[require_user] = mock_require_user
         return client
 
-    with patch("app.main.get_user_client", return_value=MagicMock()):
+    with patch("app.main.get_user_client", return_value=MagicMock()), \
+         patch("app.main.get_admin_client", return_value=MagicMock()):
         yield as_user
 
     session_mod.DEFAULT_BASE_DIR = original_base_dir
