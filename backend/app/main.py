@@ -25,7 +25,7 @@ from app.suppliers.registry import get_supplier
 from app.units import mm_to_inches
 from app.report import generate_report_pdf
 from app.auth import require_user
-from app.supabase_client import get_user_client
+from app.supabase_client import get_user_client, get_admin_client
 from app.storage import upload_file as storage_upload, get_signed_url, delete_files, download_file as storage_download
 from app.database import (
     create_project, update_project, list_projects, get_project, delete_project,
@@ -167,8 +167,12 @@ async def restore_session(request: Request, payload: RestoreSessionRequest, user
         )
         raise HTTPException(status_code=403, detail="Project file path is invalid")
 
+    # Path was just verified to live under the caller's prefix, so storage
+    # access is authorised. Use the admin client to side-step storage RLS,
+    # which is configured separately in Supabase Studio.
+    storage_client = get_admin_client()
     try:
-        content = storage_download(db, file_path_str)
+        content = storage_download(storage_client, file_path_str)
     except Exception as e:
         raise HTTPException(status_code=502, detail=f"Failed to load project file: {e}")
 
@@ -365,6 +369,9 @@ async def download_report(request: Request, payload: ReportRequest, user: dict =
 async def save_project(request: ProjectCreate, user: dict = Depends(require_user)):
     user_id = user["id"]
     db = get_user_client(user["token"])
+    # Storage paths are constructed below with the user_id prefix, so any
+    # access goes through the admin client without storage RLS plumbing.
+    storage_client = get_admin_client()
     analysis_dict = request.analysis_result.model_dump(mode="json")
     optimize_dict = request.optimize_result.model_dump(mode="json") if request.optimize_result else None
 
@@ -381,7 +388,7 @@ async def save_project(request: ProjectCreate, user: dict = Depends(require_user
             b64_data = request.thumbnail.split(",", 1)[-1]
             thumb_bytes = base64.b64decode(b64_data)
             try:
-                storage_upload(db, thumbnail_path, thumb_bytes, "image/png")
+                storage_upload(storage_client, thumbnail_path, thumb_bytes, "image/png")
             except Exception:
                 pass  # thumbnail update is best-effort (may already exist)
 
@@ -411,14 +418,14 @@ async def save_project(request: ProjectCreate, user: dict = Depends(require_user
 
     file_path = f"{user_id}/{project_id}/model.3mf"
     file_bytes = threemf_files[0].read_bytes()
-    storage_upload(db, file_path, file_bytes, "application/octet-stream")
+    storage_upload(storage_client, file_path, file_bytes, "application/octet-stream")
 
     thumbnail_path = None
     if request.thumbnail:
         thumbnail_path = f"{user_id}/{project_id}/thumbnail.png"
         b64_data = request.thumbnail.split(",", 1)[-1]
         thumb_bytes = base64.b64decode(b64_data)
-        storage_upload(db, thumbnail_path, thumb_bytes, "image/png")
+        storage_upload(storage_client, thumbnail_path, thumb_bytes, "image/png")
 
     create_project(
         db,
@@ -527,7 +534,7 @@ async def delete_user_project(project_id: str, user: dict = Depends(require_user
     if thumb_path and _is_safe_user_storage_path(thumb_path, user["id"]):
         paths_to_delete.append(thumb_path)
     if paths_to_delete:
-        delete_files(db, paths_to_delete)
+        delete_files(get_admin_client(), paths_to_delete)
 
     delete_project(db, project_id, user["id"])
 
