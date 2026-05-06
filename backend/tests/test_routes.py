@@ -374,10 +374,11 @@ class TestProjects:
             "solid_species": "Red Oak", "sheet_type": "Baltic Birch",
             "all_solid": False, "display_units": "in",
             "analysis_result": {"parts": [], "shopping_list": [], "cost_estimate": {"items": []}, "display_units": "in"},
-            # Paths must use the {user_id}/{project_id}/ prefix; the handler
-            # rejects rows that don't, as defence in depth against tampering.
-            "file_path": "test-user-123/p1/model.3mf",
-            "thumbnail_path": "test-user-123/p1/thumb.png",
+            # Paths must live under the user's prefix; the second segment
+            # is whatever was generated at upload time and is allowed to
+            # differ from the row id (legacy save_project did this).
+            "file_path": "test-user-123/legacy-uuid/model.3mf",
+            "thumbnail_path": "test-user-123/legacy-uuid/thumb.png",
             "created_at": "2026-04-28T00:00:00", "updated_at": "2026-04-28T00:00:00",
         }
         mock_signed.return_value = "https://signed-url"
@@ -385,6 +386,46 @@ class TestProjects:
         response = auth_client.get("/api/projects/p1")
         assert response.status_code == 200
         assert response.json()["name"] == "Test"
+
+    @patch("app.main.get_project")
+    @patch("app.main.get_signed_url")
+    def test_get_project_detail_rejects_foreign_user_prefix(
+        self, mock_signed, mock_get, auth_client,
+    ):
+        """A row whose file_path is under another user's prefix must NOT
+        produce a signed URL — that would be the IDOR-via-DB attack the
+        prefix check exists to prevent."""
+        mock_get.return_value = {
+            "id": "p1", "name": "Test", "filename": "test.3mf",
+            "solid_species": "Red Oak", "sheet_type": "Baltic Birch",
+            "all_solid": False, "display_units": "in",
+            "analysis_result": {"parts": [], "shopping_list": [], "cost_estimate": {"items": []}, "display_units": "in"},
+            "file_path": "other-user/anything/model.3mf",
+            "thumbnail_path": "other-user/anything/thumb.png",
+            "created_at": "2026-04-28T00:00:00", "updated_at": "2026-04-28T00:00:00",
+        }
+        mock_signed.return_value = "https://signed-url"
+        response = auth_client.get("/api/projects/p1")
+        assert response.status_code == 403
+        mock_signed.assert_not_called()
+
+    @patch("app.main.get_project")
+    @patch("app.main.get_signed_url")
+    def test_get_project_detail_rejects_traversal_path(
+        self, mock_signed, mock_get, auth_client,
+    ):
+        mock_get.return_value = {
+            "id": "p1", "name": "Test", "filename": "test.3mf",
+            "solid_species": "Red Oak", "sheet_type": "Baltic Birch",
+            "all_solid": False, "display_units": "in",
+            "analysis_result": {"parts": [], "shopping_list": [], "cost_estimate": {"items": []}, "display_units": "in"},
+            "file_path": "test-user-123/../other-user/anything/model.3mf",
+            "thumbnail_path": None,
+            "created_at": "2026-04-28T00:00:00", "updated_at": "2026-04-28T00:00:00",
+        }
+        response = auth_client.get("/api/projects/p1")
+        assert response.status_code == 403
+        mock_signed.assert_not_called()
 
     @patch("app.main.get_project")
     def test_get_project_not_found(self, mock_get, auth_client):
@@ -396,12 +437,12 @@ class TestProjects:
     @patch("app.main.delete_files")
     @patch("app.main.delete_project")
     def test_delete_project(self, mock_del_db, mock_del_files, mock_get, auth_client):
-        # File paths must use the {user_id}/{project_id}/ prefix so the
-        # ownership-prefix check passes.
+        # File paths only need to live under the caller's user_id prefix.
+        # The second segment may differ from the row id (legacy data).
         mock_get.return_value = {
             "id": "p1",
-            "file_path": "test-user-123/p1/model.3mf",
-            "thumbnail_path": "test-user-123/p1/thumb.png",
+            "file_path": "test-user-123/legacy-uuid/model.3mf",
+            "thumbnail_path": "test-user-123/legacy-uuid/thumb.png",
         }
         response = auth_client.delete("/api/projects/p1")
         assert response.status_code == 204

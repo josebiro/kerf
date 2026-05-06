@@ -43,6 +43,25 @@ class RestoreSessionRequest(_BaseModel):
     project_id: str
 
 
+def _is_safe_user_storage_path(path: str, user_id: str) -> bool:
+    """Whether *path* is a Supabase Storage key the caller is allowed to access.
+
+    Stored paths must live under the user's own user_id prefix and must not
+    contain traversal segments. We deliberately do NOT require the second
+    segment to match the row's project_id: legacy data uses a separately
+    generated UUID for the path segment, while the row id comes from the
+    database default. RLS on the projects table already ensures the caller
+    owns the row, and storage RLS prevents cross-prefix writes.
+    """
+    if not isinstance(path, str) or not path:
+        return False
+    if ".." in path.split("/"):
+        return False
+    if "\\" in path or "\x00" in path:
+        return False
+    return path.startswith(f"{user_id}/")
+
+
 def _rate_limit_key(request: Request) -> str:
     """Key requests by authenticated user when possible, else by IP.
 
@@ -141,9 +160,11 @@ async def restore_session(request: Request, payload: RestoreSessionRequest, user
         raise HTTPException(status_code=404, detail="Project not found")
 
     file_path_str: str = project["file_path"]
-    expected_prefix = f"{user['id']}/{payload.project_id}/"
-    if not file_path_str.startswith(expected_prefix):
-        # Defensive: storage path must be inside the user's prefix.
+    if not _is_safe_user_storage_path(file_path_str, user["id"]):
+        log.warning(
+            "restore_session: project %s has unsafe file_path %r",
+            payload.project_id, file_path_str,
+        )
         raise HTTPException(status_code=403, detail="Project file path is invalid")
 
     try:
@@ -458,14 +479,17 @@ async def get_user_project(project_id: str, user: dict = Depends(require_user)):
     if row is None:
         raise HTTPException(status_code=404, detail="Project not found")
 
-    expected_prefix = f"{user['id']}/{project_id}/"
     file_path_str = row.get("file_path") or ""
-    if not file_path_str.startswith(expected_prefix):
-        raise HTTPException(status_code=500, detail="Project file path is invalid")
+    if not _is_safe_user_storage_path(file_path_str, user["id"]):
+        log.warning(
+            "get_user_project: project %s has unsafe file_path %r",
+            project_id, file_path_str,
+        )
+        raise HTTPException(status_code=403, detail="Project file path is invalid")
     file_url = get_signed_url(file_path_str) or ""
     thumbnail_url = None
     thumb_path = row.get("thumbnail_path")
-    if thumb_path and thumb_path.startswith(expected_prefix):
+    if thumb_path and _is_safe_user_storage_path(thumb_path, user["id"]):
         thumbnail_url = get_signed_url(thumb_path)
 
     analysis = AnalyzeResponse(**row["analysis_result"])
@@ -495,13 +519,12 @@ async def delete_user_project(project_id: str, user: dict = Depends(require_user
     if row is None:
         raise HTTPException(status_code=404, detail="Project not found")
 
-    expected_prefix = f"{user['id']}/{project_id}/"
     paths_to_delete: list[str] = []
     file_path = row.get("file_path")
-    if file_path and file_path.startswith(expected_prefix):
+    if file_path and _is_safe_user_storage_path(file_path, user["id"]):
         paths_to_delete.append(file_path)
     thumb_path = row.get("thumbnail_path")
-    if thumb_path and thumb_path.startswith(expected_prefix):
+    if thumb_path and _is_safe_user_storage_path(thumb_path, user["id"]):
         paths_to_delete.append(thumb_path)
     if paths_to_delete:
         delete_files(db, paths_to_delete)
